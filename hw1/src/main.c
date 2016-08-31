@@ -23,5 +23,8 @@ int main(int argc, char** argv) {
     int x = validateargs(argc, argv);
     printf("%d \n", x);
     printf("Welcome to CSE 320!\n");
+    if(x == -1)
+        return EXIT_FAILURE;
+    
     return EXIT_SUCCESS;
 }

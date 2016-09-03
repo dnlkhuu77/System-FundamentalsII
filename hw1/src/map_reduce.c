@@ -56,7 +56,6 @@ int validateargs(int argc, char** argv){ //2, 3, 4 arguments
 				else
 					return -1;
 		}
-
 		if(strcmp(argv[2], "stats") == 0){
 			DIR* dir = opendir(argv[3]);
 				if(dir){
@@ -73,17 +72,17 @@ int validateargs(int argc, char** argv){ //2, 3, 4 arguments
 
 int nfiles(char* dir){
 	static int files = 0;
-	DIR* ptr; //a pointer at the files (opdir)
-	struct dirent *someptr; //redir
+	DIR* ptr;
+	struct dirent *someptr;
 	char path[1024];
 
 	if((ptr = opendir(dir)) == NULL)
 		return -1;
 
 	while((someptr = readdir(ptr)) != NULL){
-		if(strcmp(someptr->d_name, ".") == 0)
+		if(strcmp(someptr->d_name, "..") == 0)
 			continue;
-		else if (strcmp(someptr -> d_name, "..") == 0)
+		else if (strcmp(someptr -> d_name, ".") == 0)
 			continue;
 		else if(someptr->d_type == DT_DIR){
 			path[0] = '\0';
@@ -104,4 +103,50 @@ int nfiles(char* dir){
 	}
 	else
 		return files;
+}
+
+int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, char* fn)){
+	DIR* ptr;
+	struct dirent *someptr;
+	char path[1024];
+	int length = 0;
+
+	if((ptr = opendir(dir)) == NULL)
+		return -1;
+
+	while((someptr = readdir(ptr)) != NULL){
+		if(strcmp(someptr->d_name, ".") == 0)
+			continue;
+		else if (strcmp(someptr -> d_name, "..") == 0)
+			continue;
+		else if(someptr->d_type == DT_DIR){
+			path[0] = '\0';
+			strncat(path, dir, sizeof(path) - 1);
+			strncat(path, "/", sizeof(path) - 1);
+			strncat(path, someptr->d_name, sizeof(path) - 1);
+			nfiles(path);
+		}
+		else if(someptr->d_type == DT_REG){
+			//do our work here
+			char* ans = strcat(dir, someptr->d_name);
+			//ans = strlen(ans, size + someptr->d_reclen); //int + short
+			ans = strcar(ans, "\0"); //add the num terminator
+			length = strlen(ans);
+
+			printf("%s\n", ans); //testing shit
+
+			if(fopen(ans, r) == NULL)
+				continue;
+			else{
+				//act
+				
+			}
+
+			fclose(ans);
+
+		}
+	}
+
+	closedir(ptr);
+	return 0;
 }

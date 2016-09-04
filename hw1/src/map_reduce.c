@@ -109,6 +109,7 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	DIR* ptr;
 	struct dirent *someptr;
 	char path[1024];
+	int result = 0;
 
 	if((ptr = opendir(dir)) == NULL)
 		return -1;
@@ -132,7 +133,7 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 			strcat(ans, "/");
 			strcat(ans, someptr->d_name);
 
-			printf("%s\n", ans); //testing shit
+			//printf("%s\n", ans); //testing shit
 
 			FILE* fp = NULL;
 			if((fp = fopen(ans, "r")) == NULL){
@@ -141,7 +142,7 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 			}
 			else{
 				
-				act(fp, results, dir); //fn is dir?
+				result = act(fp, results, someptr->d_name); //fn is dir?
 				
 			}
 
@@ -151,5 +152,5 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	}
 
 	closedir(ptr);
-	return 0;
+	return result;
 }

@@ -110,6 +110,9 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	struct dirent *someptr;
 	char path[1024];
 	int result = 0;
+	memset(results, '$', size); //initialize the array
+	int x = *(int*) results;
+
 
 	if((ptr = opendir(dir)) == NULL)
 		return -1;
@@ -127,7 +130,6 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 			map(path, results, size, act);
 		}
 		else if(someptr->d_type == DT_REG){ //it's a regular file
-
 			char *ans = malloc(strlen(dir) + strlen(someptr->d_name) + 2);
 			strcpy(ans, dir);
 			strcat(ans, "/");
@@ -137,20 +139,21 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 
 			FILE* fp = NULL;
 			if((fp = fopen(ans, "r")) == NULL){
-				continue; //or return -
-				printf("Error in opening a file");
+				return -1; //error in opening file
 			}
-			else{
-				
-				result = act(fp, results, someptr->d_name); //fn is dir?
-				
+			else{		
+				int acty = act(fp, results, someptr->d_name);
+				x = acty;//store the result into a space in results[]
+				x = x + size; //might have to increment by 4
+				result = result + acty; //add up all the results of act
+				//results[] = result;
+				//results = results + size;
 			}
 
 			fclose(fp);
-
 		}
 	}
 
 	closedir(ptr);
-	return result;
+	return result; //go through the array and add them up
 }

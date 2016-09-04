@@ -48,15 +48,20 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
     */
 
+    /*
     int files = nfiles(argv[1]);
     printf("%d\n", files);
 
     if(files == 0){
-        printf("There is no files in this directory.");
         return EXIT_SUCCESS;
     }
     if(files == -1)
         return EXIT_FAILURE;
 
+    return EXIT_SUCCESS; // >1
+    */
+
+    int help = map(argv[1], stats_space, sizeof(stats_space), cat);
+    printf("%d\n", help);
     return EXIT_SUCCESS;
 }

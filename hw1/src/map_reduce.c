@@ -109,40 +109,43 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	DIR* ptr;
 	struct dirent *someptr;
 	char path[1024];
-	int length = 0;
 
 	if((ptr = opendir(dir)) == NULL)
 		return -1;
 
 	while((someptr = readdir(ptr)) != NULL){
-		if(strcmp(someptr->d_name, ".") == 0)
+		if(strcmp(someptr->d_name, "..") == 0)
 			continue;
-		else if (strcmp(someptr -> d_name, "..") == 0)
+		else if (strcmp(someptr -> d_name, ".") == 0)
 			continue;
 		else if(someptr->d_type == DT_DIR){
 			path[0] = '\0';
 			strncat(path, dir, sizeof(path) - 1);
 			strncat(path, "/", sizeof(path) - 1);
 			strncat(path, someptr->d_name, sizeof(path) - 1);
-			nfiles(path);
+			map(path, results, size, act);
 		}
-		else if(someptr->d_type == DT_REG){
-			//do our work here
-			char* ans = strcat(dir, someptr->d_name);
-			//ans = strlen(ans, size + someptr->d_reclen); //int + short
-			ans = strcar(ans, "\0"); //add the num terminator
-			length = strlen(ans);
+		else if(someptr->d_type == DT_REG){ //it's a regular file
+
+			char *ans = malloc(strlen(dir) + strlen(someptr->d_name) + 2);
+			strcpy(ans, dir);
+			strcat(ans, "/");
+			strcat(ans, someptr->d_name);
 
 			printf("%s\n", ans); //testing shit
 
-			if(fopen(ans, r) == NULL)
-				continue;
+			FILE* fp = NULL;
+			if((fp = fopen(ans, "r")) == NULL){
+				continue; //or return -
+				printf("Error in opening a file");
+			}
 			else{
-				//act
+				
+				act(fp, results, dir); //fn is dir?
 				
 			}
 
-			fclose(ans);
+			fclose(fp);
 
 		}
 	}

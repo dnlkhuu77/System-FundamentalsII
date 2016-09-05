@@ -110,8 +110,8 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	struct dirent *someptr;
 	char path[1024];
 	int result = 0;
-	memset(results, '$', size); //initialize the array
 	int* x = (int*) results; //has to be int because the struct will be this size
+	memset(x, '$', size); //initialize the array
 
 
 	if((ptr = opendir(dir)) == NULL)
@@ -142,7 +142,7 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 				return -1; //error in opening file
 			}
 			else{		
-				int acty = act(fp, results, someptr->d_name);
+				int acty = act(fp, x, someptr->d_name);
 				*x = acty;//store the result into a space in results[]
 				*x = *x + size; //might have to increment by 4
 				result = result + acty; //add up all the results of act
@@ -165,3 +165,53 @@ struct Analysis analysis_reduce(int n, void* results){
 	return ans;
 }
 */
+
+int analysis(FILE* f, void* res, char* filename){
+    struct Analysis a;
+    struct Analysis* ptr = (struct Analysis*) res; //cast the void pointer
+
+    a.filename = filename;
+    char c;
+    int n = 0; //calculates bytes
+    int n_line = 0; //calculates characters per line
+    int n_max = 0;
+    int line_counter = 0; //the longest line
+    int line_max = 0;
+    int ascii[128]; //count each ascii character
+    memset(ascii, 0, 128); //initialize the array
+
+    printf("%s\n", filename);
+
+    while((c = fgetc(f)) != EOF) {
+        printf("%c", c);
+        n++; //increment the bytes of the file
+        n_line++; //increment the bytes of the line
+
+        for(int i = 0; i < 127; i++){
+            if(c == i)
+                ascii[i]++;
+        }
+
+        if(c == '\n'){
+            if(n_line >= n_max){
+                n_max = n_line;
+                line_max = line_counter;
+            }
+
+            n_line = 0; //reset the bytes of a line 
+            line_counter++; //increment the line count
+        }
+    }
+
+    a.lnlen = n_max;
+    a.lnno = line_max;
+    
+    for(int i = 0; i < 127; i++){
+    	a.ascii[i] = ascii[i];
+    }
+
+    *ptr = a;
+
+    printf("\n");
+    return n;
+}

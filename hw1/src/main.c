@@ -19,50 +19,6 @@ int cat(FILE* f, void* res, char* filename) {
     return n;
 }
 
-int analysis(FILE* f, void* res, char* filename){
-    struct Analysis a;
-    struct Analysis* ptr = (struct Analysis*) res; //cast the void pointer
-
-    a.filename = filename;
-    char c;
-    int n = 0; //calculates bytes
-    int n_line = 0; //calculates characters per line
-    int n_max = 0;
-    int line_counter = 0; //the longest line
-    int line_max = 0;
-    int ascii[128]; //count each ascii character
-    memset(ascii, 0, 127); //initialize the array
-
-    printf("%s\n", filename);
-
-    while((c = fgetc(f)) != EOF) {
-        printf("%c", c);
-        n++; //increment the bytes of the file
-        n_line++; //increment the bytes of the line
-
-        for(int i = 0; i < 127; i++){
-            if(c == i)
-                ascii[i]++;
-        }
-
-        if(c == '\n'){
-            if(n_line >= n_max){
-                n_max = n_line;
-                line_max = line_counter;
-            }
-
-            n_line = 0; //reset the bytes of a line 
-            line_counter++; //increment the line count
-        }
-
-    }
-    a.lnlen = n_max;
-    a.lnno = line_max;
-    *ptr = a;
-
-    printf("\n");
-    return n;
-}
 
 int main(int argc, char** argv) {
     /*
@@ -112,7 +68,7 @@ int main(int argc, char** argv) {
 
     //call on the reduce function
     /*
-    analysis_space = analysis_reduce(help, analysis_space);
+    analysis_space = analysis_reduce(help, analysis_space[0]);
 
     if(analysis_space == NULL)
         return EXIT_FAILURE;

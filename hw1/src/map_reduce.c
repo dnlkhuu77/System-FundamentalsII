@@ -7,13 +7,13 @@
 
 //Implement map_reduce.h functions here.
 int validateargs(int argc, char** argv){ //2, 3, 4 arguments
-	if(argc == 1)
+	if(argc == 1 || argc == 0)
 		return -1;
 
 	if (strcmp(argv[1], "-h") == 0){ //check to see if first flag is -h
 		return 0;
 	}
-	if(argc < 2 || argc > 4){
+	if(argc > 4){
 		return -1;
 	}
 
@@ -111,7 +111,7 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	char path[1024];
 	int result = 0;
 	memset(results, '$', size); //initialize the array
-	int x = *(int*) results;
+	int* x = (int*) results; //has to be int because the struct will be this size
 
 
 	if((ptr = opendir(dir)) == NULL)
@@ -143,17 +143,25 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 			}
 			else{		
 				int acty = act(fp, results, someptr->d_name);
-				x = acty;//store the result into a space in results[]
-				x = x + size; //might have to increment by 4
+				*x = acty;//store the result into a space in results[]
+				*x = *x + size; //might have to increment by 4
 				result = result + acty; //add up all the results of act
 				//results[] = result;
 				//results = results + size;
 			}
-
 			fclose(fp);
 		}
 	}
-
 	closedir(ptr);
 	return result; //go through the array and add them up
 }
+/*
+struct Analysis analysis_reduce(int n, void* results){
+	struct Analysis ans = NULL;
+	//cast the pointer to struct 
+	Analysis ptr = *(Analysis*) results;
+
+
+	return ans;
+}
+*/

@@ -62,8 +62,8 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS; // >1
     */
 
-    int help = map(argv[1], analysis_space, sizeof(analysis_space), cat);
-    printf("%d\n", help);
+    int help = map(argv[1], stats_space, sizeof(stats_space), stats);
+    printf("Main: %d\n", help);
     return EXIT_SUCCESS;
 
     //call on the reduce function

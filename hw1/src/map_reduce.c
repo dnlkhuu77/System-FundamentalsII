@@ -164,13 +164,13 @@ struct Analysis analysis_reduce(int n, void* results){
 
 	return ans;
 }
-*/
 
+*/
 int analysis(FILE* f, void* res, char* filename){
     struct Analysis a;
     struct Analysis* ptr = (struct Analysis*) res; //cast the void pointer
 
-    a.filename = filename;
+    a.filename = strdup(filename);
     char c;
     int n = 0; //calculates bytes
     int n_line = 0; //calculates characters per line
@@ -220,7 +220,7 @@ int stats(FILE* f, void* res, char* filename){
     Stats s;
     struct Stats* ptr = (struct Stats*) res;
 
-    s.filename = filename;
+    s.filename = strdup(filename);
     int c; //the current individual number
     int n = 0; //count how many numbers are in the file
     int sum = 0;
@@ -228,9 +228,12 @@ int stats(FILE* f, void* res, char* filename){
     memset(histogram, 0, NVAL);
 
     printf("%s\n", filename);
-    //fscanf(fp, %d, &c); make c into an int
-    while((c = fscanf(f, "%d", &c)) != EOF) {
-        printf("%d", c); //print the number
+
+    if(fscanf(f, "%d", &c) == EOF)
+    	return -1;
+    rewind(f);
+    
+    while(fscanf(f, "%d", &c) != EOF) {
         n++; //increment the number counter
         sum = sum + c; 
 
@@ -243,6 +246,8 @@ int stats(FILE* f, void* res, char* filename){
 
     s.sum = sum;
     s.n = n;
+    printf("n %d\n", n);
+    printf("Final Sum %d\n", sum);
 
     for(int i = 0; i < NVAL; i++){
     	s.histogram[i] = histogram[i];
@@ -250,5 +255,5 @@ int stats(FILE* f, void* res, char* filename){
 
     *ptr = s;
     printf("\n");
-    return n;
+    return 0;
 }

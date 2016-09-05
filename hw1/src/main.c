@@ -30,7 +30,8 @@ int analysis(FILE* f, void* res, char* filename){
     int n_max = 0;
     int line_counter = 0; //the longest line
     int line_max = 0;
-    //int ascii[128]; //count each ascii character
+    int ascii[128]; //count each ascii character
+    memset(ascii, 0, 127); //initialize the array
 
     printf("%s\n", filename);
 
@@ -38,6 +39,11 @@ int analysis(FILE* f, void* res, char* filename){
         printf("%c", c);
         n++; //increment the bytes of the file
         n_line++; //increment the bytes of the line
+
+        for(int i = 0; i < 127; i++){
+            if(c == i)
+                ascii[i]++;
+        }
 
         if(c == '\n'){
             if(n_line >= n_max){

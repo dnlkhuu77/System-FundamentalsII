@@ -205,13 +205,50 @@ int analysis(FILE* f, void* res, char* filename){
 
     a.lnlen = n_max;
     a.lnno = line_max;
-    
+
     for(int i = 0; i < 127; i++){
     	a.ascii[i] = ascii[i];
     }
 
     *ptr = a;
 
+    printf("\n");
+    return n;
+}
+
+int stats(FILE* f, void* res, char* filename){
+    Stats s;
+    struct Stats* ptr = (struct Stats*) res;
+
+    s.filename = filename;
+    int c; //the current individual number
+    int n = 0; //count how many numbers are in the file
+    int sum = 0;
+    int histogram[NVAL];
+    memset(histogram, 0, NVAL);
+
+    printf("%s\n", filename);
+    //fscanf(fp, %d, &c); make c into an int
+    while((c = fscanf(f, "%d", &c)) != EOF) {
+        printf("%d", c); //print the number
+        n++; //increment the number counter
+        sum = sum + c; 
+
+        for(int i = 0; i < NVAL; i++){
+        	if(c == i){
+        		histogram[i]++;
+        	}
+        }
+    }
+
+    s.sum = sum;
+    s.n = n;
+
+    for(int i = 0; i < NVAL; i++){
+    	s.histogram[i] = histogram[i];
+    }
+
+    *ptr = s;
     printf("\n");
     return n;
 }

@@ -187,6 +187,28 @@ struct Analysis analysis_reduce(int n, void* results){
 	return ans;
 }
 
+Stats stats_reduce(int n, void* results){
+	Stats ans = {0};
+	Stats imm = {0};
+	Stats* ptr = (Stats*) results;
+	int n_count, sum = 0; //n is total number of numbers; sum is total sum
+
+	for(int i = 0; i < n; i++){
+		imm = *ptr;
+		sum = sum + imm.sum;
+		n_count = n_count + imm.n;
+
+		for(int j = 0; j < NVAL; j++){
+			ans.histogram[j] = ans.histogram[j] + imm.histogram[j];
+		}
+	}
+
+	ans.sum = sum;
+	ans.n = n_count;
+	ans.filename = NULL;
+	return ans;
+}
+
 
 int analysis(FILE* f, void* res, char* filename){
     struct Analysis a = {0};
@@ -240,7 +262,7 @@ int analysis(FILE* f, void* res, char* filename){
 
 int stats(FILE* f, void* res, char* filename){
     Stats s = {0};
-    struct Stats* ptr = (struct Stats*) res;
+    Stats* ptr = (struct Stats*) res;
 
     s.filename = strdup(filename);
     int c; //the current individual number

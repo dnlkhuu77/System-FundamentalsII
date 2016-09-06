@@ -155,19 +155,41 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	closedir(ptr);
 	return result; //go through the array and add them up
 }
-/*
+
 struct Analysis analysis_reduce(int n, void* results){
-	struct Analysis ans = NULL;
-	//cast the pointer to struct 
-	Analysis ptr = *(Analysis*) results;
+	struct Analysis ans = {0}; //make a struct
+	struct Analysis imm = {0};
+	struct Analysis* ptr = (struct Analysis*) results;
+	int current_length, max_length = 0;
+	int max_line = 0;
+	char* filename;
 
+	for(int i = 0; i < n; i++){
+		imm = *ptr;
+		current_length = imm.lnlen;
 
+		if(current_length >= max_length){
+			max_length = current_length;
+			max_line = imm.lnno;
+			filename = imm.filename;
+		}
+
+		for(int j = 0; j < 127; j++){
+			ans.ascii[j] = ans.ascii[j] + imm.ascii[j];
+		}
+
+		ptr++;
+	}
+
+	ans.lnlen = max_length;
+	ans.lnno = max_line;
+	ans.filename = filename;
 	return ans;
 }
 
-*/
+
 int analysis(FILE* f, void* res, char* filename){
-    struct Analysis a;
+    struct Analysis a = {0};
     struct Analysis* ptr = (struct Analysis*) res; //cast the void pointer
 
     a.filename = strdup(filename);
@@ -217,7 +239,7 @@ int analysis(FILE* f, void* res, char* filename){
 }
 
 int stats(FILE* f, void* res, char* filename){
-    Stats s;
+    Stats s = {0};
     struct Stats* ptr = (struct Stats*) res;
 
     s.filename = strdup(filename);
@@ -232,7 +254,7 @@ int stats(FILE* f, void* res, char* filename){
     if(fscanf(f, "%d", &c) == EOF)
     	return -1;
     rewind(f);
-    
+
     while(fscanf(f, "%d", &c) != EOF) {
         n++; //increment the number counter
         sum = sum + c; 

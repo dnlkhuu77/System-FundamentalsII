@@ -233,6 +233,93 @@ void analysis_print(struct Analysis res, int nbytes, int hist){
 	}
 }
 
+void stats_print(Stats res, int hist){
+	//ADD THE HISTOGRAM HERE
+	if(hist != 0){
+		printf("Histogram: \n");
+
+		for(int i = 0; i < NVAL; i++){
+			if(res.histogram[i] != 0){
+				printf("%d:", i);
+
+				for(int j = 0; j < res.histogram[i]; j++){
+					printf("-");
+				}
+				printf("\n");
+			}
+		}
+	}
+
+	printf("Count: %d\n", res.n);
+
+	int mean = res.sum / res.n;
+	printf("Mean: %d\n", mean);
+
+	int max = 0; //use a array to count multiple occurence
+	for(int i = 0; i < NVAL; i++){
+		if(max > res.histogram[i])
+			max = res.histogram[i];
+	}
+	printf("Mode: ");
+	for(int i = 0; i < NVAL; i++){
+		if(res.histogram[i] == max)
+			printf("%d ", res.histogram[i]);
+	}
+	printf("\n");
+
+	int median = 0;
+	int med_index = res.n / 2; //(rounds down)
+	int med_count = 0;
+
+	if(med_index % 2 == 1){ //if odd, pick the middle number
+		for(int i = 0; i < NVAL; i++){
+			if(med_count >= med_index){
+				median = i;
+			}
+			med_count = med_count + res.histogram[i];
+		}
+	}
+	else{
+		for(int i = 0; i < NVAL; i++){
+			if(med_count >= med_index){
+				if(med_count + res.histogram[i] == med_index)
+					median = (i + (i + 1)) / 2;
+				else
+					median = (i + i) / 2;
+			}
+			med_count = med_count + res.histogram[i];
+		}
+	}
+	printf("Median: %d\n", median);
+
+	int q1, q3, count = 0;
+	int q1_index = res.n * 0.25;
+	int q3_index = res.n * 0.75;
+
+	for(int i = 0; i < NVAL; i++){
+		if(count >= q1_index)
+			q1 = i;
+		if(count >= q3_index)
+			q3 = i;
+		count = count + res.histogram[i];
+	}
+	printf("Q1: %d\n", q1);
+	printf("Q3: %d\n", q3);
+
+	int min, max_c = 0;
+	for(int i = 0; i < NVAL; i++){
+		if(res.histogram[i] != 0)
+			max_c = i;
+	}
+	for(int i = NVAL - 1; i >= 0; i--){
+		if(res.histogram[i] != 0)
+			min = i;
+	}
+	printf("Min: %d\n", min);
+	printf("Max: %d\n", max_c);
+
+}
+
 int analysis(FILE* f, void* res, char* filename){
     struct Analysis a = {0};
     struct Analysis* ptr = (struct Analysis*) res; //cast the void pointer

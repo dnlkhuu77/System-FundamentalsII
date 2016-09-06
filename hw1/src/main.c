@@ -62,8 +62,14 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS; // >1
     */
 
-    int help = map(argv[1], stats_space, sizeof(stats_space), stats);
-    printf("Main: %d\n", help);
+    struct Analysis test_1 = {0};
+
+
+    int help = map(argv[1], analysis_space, sizeof(test_1), analysis);
+    //printf("Main: %d\n", help);
+
+    struct Analysis ans = analysis_reduce(nfiles(argv[1]), analysis_space);
+    analysis_print(ans, help, 0);
     return EXIT_SUCCESS;
 
     //call on the reduce function

@@ -110,9 +110,8 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 	struct dirent *someptr;
 	char path[1024];
 	int result = 0;
-	int* x = (int*) results; //has to be int because the struct will be this size
-	memset(x, '$', size); //initialize the array
-
+	//int* x = (int*) results; //has to be int because the struct will be this size
+	memset(results, '$', size); //initialize the array
 
 	if((ptr = opendir(dir)) == NULL)
 		return -1;
@@ -142,16 +141,18 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 				return -1; //error in opening file
 			}
 			else{		
-				int acty = act(fp, x, someptr->d_name);
-				*x = acty;//store the result into a space in results[]
-				*x = *x + size; //might have to increment by 4
+				int acty = act(fp, results, someptr->d_name);
+				//*x = acty;//store the result into a space in results[]
+				results = results + size; //might have to increment by 4
 				result = result + acty; //add up all the results of act
 				//results[] = result;
 				//results = results + size;
 			}
 			fclose(fp);
+
 		}
 	}
+
 	closedir(ptr);
 	return result; //go through the array and add them up
 }
@@ -167,6 +168,7 @@ struct Analysis analysis_reduce(int n, void* results){
 	for(int i = 0; i < n; i++){
 		imm = *ptr;
 		current_length = imm.lnlen;
+		//printf("Current File: %s\n", imm.filename);
 
 		if(current_length >= max_length){
 			max_length = current_length;
@@ -178,7 +180,7 @@ struct Analysis analysis_reduce(int n, void* results){
 			ans.ascii[j] = ans.ascii[j] + imm.ascii[j];
 		}
 
-		ptr++;
+		ptr++; 
 	}
 
 	ans.lnlen = max_length;
@@ -201,6 +203,8 @@ Stats stats_reduce(int n, void* results){
 		for(int j = 0; j < NVAL; j++){
 			ans.histogram[j] = ans.histogram[j] + imm.histogram[j];
 		}
+
+		ptr++;
 	}
 
 	ans.sum = sum;
@@ -214,10 +218,9 @@ void analysis_print(struct Analysis res, int nbytes, int hist){
 	printf("Longest line length: %d\n", res.lnlen);
 	printf("Longest line number: %d\n", res.lnno);
 	printf("Total Bytes in directory: %d\n", nbytes);
-	printf("Histogram: \n");
 
 	if(hist != 0){ //print the histogram
-
+		printf("Histogram: \n");
 		for(int i = 0; i < 128; i++){
 			if(res.ascii[i] != 0){
 				printf("%d:", i);
@@ -247,7 +250,9 @@ void stats_print(Stats res, int hist){
 				}
 				printf("\n");
 			}
+
 		}
+
 	}
 
 	printf("Count: %d\n", res.n);
@@ -323,7 +328,7 @@ void stats_print(Stats res, int hist){
 int analysis(FILE* f, void* res, char* filename){
     struct Analysis a = {0};
     struct Analysis* ptr = (struct Analysis*) res; //cast the void pointer
-
+    //printf("Currenly handing %s/n", filename);
     a.filename = strdup(filename);
     char c;
     int n = 0; //calculates bytes
@@ -334,10 +339,8 @@ int analysis(FILE* f, void* res, char* filename){
     int ascii[128]; //count each ascii character
     memset(ascii, 0, 128); //initialize the array
 
-    printf("%s\n", filename);
-
     while((c = fgetc(f)) != EOF) {
-        printf("%c", c);
+        //printf("%c", c);
         n++; //increment the bytes of the file
         n_line++; //increment the bytes of the line
 
@@ -357,8 +360,13 @@ int analysis(FILE* f, void* res, char* filename){
         }
     }
 
+    line_max = line_max + 1;
+    n_max = n_max - 1;
+
     a.lnlen = n_max;
     a.lnno = line_max;
+    //printf("Max Length: %d\n", a.lnlen);
+    //printf("Max Line No: %d\n", a.lnno);
 
     for(int i = 0; i < 127; i++){
     	a.ascii[i] = ascii[i];

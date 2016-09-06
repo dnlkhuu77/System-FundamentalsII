@@ -221,16 +221,17 @@ void analysis_print(struct Analysis res, int nbytes, int hist){
 
 	if(hist != 0){ //print the histogram
 		printf("Histogram: \n");
+
 		for(int i = 0; i < 128; i++){
 			if(res.ascii[i] != 0){
-				printf("%d:", i);
+				printf("%d: ", i);
 
 				for(int j = 0; j < res.ascii[i]; j++){
 					printf("-");
 				}
+				//printf("%d", res.ascii[i]);
 				printf("\n");
 			}
-
 		}
 
 	}
@@ -344,10 +345,11 @@ int analysis(FILE* f, void* res, char* filename){
         n++; //increment the bytes of the file
         n_line++; //increment the bytes of the line
 
-        for(int i = 0; i < 127; i++){
-            if(c == i)
-                ascii[i]++;
-        }
+        //for(int i = 0; i < 128; i++){
+        //    if(c == i)
+        //        ascii[i]++;
+        //}
+        a.ascii[(int) c]++;
 
         if(c == '\n'){
             if(n_line >= n_max){
@@ -368,9 +370,9 @@ int analysis(FILE* f, void* res, char* filename){
     //printf("Max Length: %d\n", a.lnlen);
     //printf("Max Line No: %d\n", a.lnno);
 
-    for(int i = 0; i < 127; i++){
-    	a.ascii[i] = ascii[i];
-    }
+    //for(int i = 0; i < 128; i++){
+    //	a.ascii[i] = ascii[i];
+    //}
 
     *ptr = a;
 

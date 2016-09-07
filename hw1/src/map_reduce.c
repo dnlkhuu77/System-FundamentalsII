@@ -193,12 +193,15 @@ Stats stats_reduce(int n, void* results){
 	Stats ans = {0};
 	Stats imm = {0};
 	Stats* ptr = (Stats*) results;
-	int n_count, sum = 0; //n is total number of numbers; sum is total sum
+	int n_count = 0; //n is total number of numbers; sum is total sum
+	int sum = 0;
 
 	for(int i = 0; i < n; i++){
 		imm = *ptr;
+		//printf("Reduce Sum: %d\n", imm.sum);
 		sum = sum + imm.sum;
 		n_count = n_count + imm.n;
+		//printf("Reduce n: %d\n", imm.n);
 
 		for(int j = 0; j < NVAL; j++){
 			ans.histogram[j] = ans.histogram[j] + imm.histogram[j];
@@ -209,6 +212,8 @@ Stats stats_reduce(int n, void* results){
 
 	ans.sum = sum;
 	ans.n = n_count;
+	//printf("Final Sum: %d\n", sum);
+	//printf("Final n: %d\n", n_count);
 	ans.filename = NULL;
 	return ans;
 }
@@ -238,7 +243,7 @@ void analysis_print(struct Analysis res, int nbytes, int hist){
 }
 
 void stats_print(Stats res, int hist){
-	//ADD THE HISTOGRAM HERE
+
 	if(hist != 0){
 		printf("Histogram: \n");
 
@@ -257,21 +262,24 @@ void stats_print(Stats res, int hist){
 	}
 
 	printf("Count: %d\n", res.n);
+	printf("Sum %d\n", res.sum);
 
-	int mean = res.sum / res.n;
-	printf("Mean: %d\n", mean);
+	float mean = (float)res.sum / (float) res.n;
+	printf("Mean: %.6f\n", mean);
+
 
 	int max = 0; //use a array to count multiple occurence
 	for(int i = 0; i < NVAL; i++){
-		if(max > res.histogram[i])
+		if(max < res.histogram[i])
 			max = res.histogram[i];
 	}
 	printf("Mode: ");
 	for(int i = 0; i < NVAL; i++){
 		if(res.histogram[i] == max)
-			printf("%d ", res.histogram[i]);
+			printf("%d ", i);
 	}
 	printf("\n");
+
 
 	int median = 0;
 	int med_index = res.n / 2; //(rounds down)
@@ -382,7 +390,7 @@ int analysis(FILE* f, void* res, char* filename){
 
 int stats(FILE* f, void* res, char* filename){
     Stats s = {0};
-    Stats* ptr = (struct Stats*) res;
+    Stats* ptr = (Stats*) res;
 
     s.filename = strdup(filename);
     int c; //the current individual number
@@ -391,7 +399,7 @@ int stats(FILE* f, void* res, char* filename){
     int histogram[NVAL];
     memset(histogram, 0, NVAL);
 
-    printf("%s\n", filename);
+    printf("Current handling: %s\n", filename);
 
     if(fscanf(f, "%d", &c) == EOF)
     	return -1;
@@ -401,21 +409,22 @@ int stats(FILE* f, void* res, char* filename){
         n++; //increment the number counter
         sum = sum + c; 
 
-        for(int i = 0; i < NVAL; i++){
-        	if(c == i){
-        		histogram[i]++;
-        	}
-        }
+        //for(int i = 0; i < NVAL; i++){
+        //	if(c == i){
+        //		histogram[i]++;
+        //	}
+        //}
+        s.histogram[c]++;
     }
 
     s.sum = sum;
+    //printf("Current Sum %d\n", sum);
     s.n = n;
-    printf("n %d\n", n);
-    printf("Final Sum %d\n", sum);
+    //printf("Current n: %d\n", n);
 
-    for(int i = 0; i < NVAL; i++){
-    	s.histogram[i] = histogram[i];
-    }
+    //for(int i = 0; i < NVAL; i++){
+    //	s.histogram[i] = histogram[i];
+    //}
 
     *ptr = s;
     printf("\n");

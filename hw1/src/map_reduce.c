@@ -262,7 +262,7 @@ void stats_print(Stats res, int hist){
 	}
 
 	printf("Count: %d\n", res.n);
-	printf("Sum %d\n", res.sum);
+	//printf("Sum %d\n", res.sum);
 
 	float mean = (float)res.sum / (float) res.n;
 	printf("Mean: %.6f\n", mean);
@@ -281,44 +281,84 @@ void stats_print(Stats res, int hist){
 	printf("\n");
 
 
-	int median = 0;
-	int med_index = res.n / 2; //(rounds down)
+	float median = 0;
+	int med_index = res.n / 2; //(the middle number in the list)
 	int med_count = 0;
+	int marker = 0;
 
 	if(med_index % 2 == 1){ //if odd, pick the middle number
+		med_index++;
+
+		
 		for(int i = 0; i < NVAL; i++){
+			if(marker != 0)
+				break;
+
+			med_count = med_count + res.histogram[i];
 			if(med_count >= med_index){
 				median = i;
+				marker = 1;
 			}
-			med_count = med_count + res.histogram[i];
 		}
+		
+		
 	}
-	else{
-		for(int i = 0; i < NVAL; i++){
-			if(med_count >= med_index){
-				if(med_count + res.histogram[i] == med_index)
-					median = (i + (i + 1)) / 2;
-				else
-					median = (i + i) / 2;
-			}
-			med_count = med_count + res.histogram[i];
-		}
-	}
-	printf("Median: %d\n", median);
+	else{ //even number of integers
 
-	int q1, q3, count = 0;
+		for(int i = 0; i < NVAL; i++){
+			if(marker != 0)
+				break;
+			med_count = med_count + res.histogram[i];
+
+			if(med_count >= med_index){
+				if(med_count + res.histogram[i] == med_index){
+					median = (float) (i + (i + 1)) / 2;
+					marker = 1;
+				}
+				else{
+					median = (float) (i + i) / 2;
+					marker = 1;
+				}
+			}
+		}
+
+	}
+	printf("Median: %.6f\n", median);
+
+
+	float q1, q3 = 0;
+	int count = 0;
+	int marker_2 = 0;
 	int q1_index = res.n * 0.25;
 	int q3_index = res.n * 0.75;
 
+
 	for(int i = 0; i < NVAL; i++){
-		if(count >= q1_index)
-			q1 = i;
-		if(count >= q3_index)
-			q3 = i;
+		if(marker_2 != 0)
+			break;
+
 		count = count + res.histogram[i];
+		if(count >= q1_index){
+			q1 = i;
+			marker_2 = 1;
+		}
 	}
-	printf("Q1: %d\n", q1);
-	printf("Q3: %d\n", q3);
+	marker_2 = 0;
+	count = 0;
+
+	for(int i = 0; i < NVAL; i++){
+		if(marker_2 != 0)
+			break;
+
+		count = count + res.histogram[i];
+		if(count >= q3_index){
+			q3 = i;
+			marker_2 = 1;
+		}
+	}
+
+	printf("Q1: %.6f\n", q1);
+	printf("Q3: %.6f\n", q3);
 
 	int min, max_c = 0;
 	for(int i = 0; i < NVAL; i++){

@@ -222,9 +222,9 @@ void analysis_print(struct Analysis res, int nbytes, int hist){
 	printf("File: %s\n", res.filename);
 	printf("Longest line length: %d\n", res.lnlen);
 	printf("Longest line number: %d\n", res.lnno);
-	printf("Total Bytes in directory: %d\n", nbytes);
 
 	if(hist != 0){ //print the histogram
+		printf("Total Bytes in directory: %d\n", nbytes);
 		printf("Histogram: \n");
 
 		for(int i = 0; i < 128; i++){
@@ -259,6 +259,10 @@ void stats_print(Stats res, int hist){
 
 		}
 
+	}
+
+	if(res.filename != NULL){
+		printf("File: %s\n", res.filename);
 	}
 
 	printf("Count: %d\n", res.n);
@@ -332,28 +336,74 @@ void stats_print(Stats res, int hist){
 	int q1_index = res.n * 0.25;
 	int q3_index = res.n * 0.75;
 
+	if(q1_index % 1 !=0){
+		q1_index++;
 
-	for(int i = 0; i < NVAL; i++){
-		if(marker_2 != 0)
-			break;
+		for(int i = 0; i < NVAL; i++){
+			if(marker_2 != 0)
+				break;
 
-		count = count + res.histogram[i];
-		if(count >= q1_index){
-			q1 = i;
-			marker_2 = 1;
+			count = count + res.histogram[i];
+			if(count >= q1_index){
+				q1 = i;
+				marker_2 = 1;
+			}
 		}
 	}
+	else{
+
+		for(int i = 0; i < NVAL; i++){
+			if(marker_2 != 0)
+				break;
+
+			count = count + res.histogram[i];
+			if(count >= q1_index){
+				if(count + res.histogram[i] == q1_index){
+					q1 = (float) (i + (i + 1)) / 2;
+					marker_2 = 1;
+				}
+				else{
+					q1 = (float) (i + i) / 2;
+					marker_2 = 1;
+				}
+			}
+		}
+	}
+
 	marker_2 = 0;
 	count = 0;
 
-	for(int i = 0; i < NVAL; i++){
-		if(marker_2 != 0)
-			break;
+	if(q3_index % 1 !=0){
+		q3_index++;
 
-		count = count + res.histogram[i];
-		if(count >= q3_index){
-			q3 = i;
-			marker_2 = 1;
+		for(int i = 0; i < NVAL; i++){
+			if(marker_2 != 0)
+				break;
+
+			count = count + res.histogram[i];
+			if(count >= q3_index){
+				q3 = i;
+				marker_2 = 1;
+			}
+		}
+	}
+	else{
+
+		for(int i = 0; i < NVAL; i++){
+			if(marker_2 != 0)
+				break;
+
+			count = count + res.histogram[i];
+			if(count >= q3_index){
+				if(count + res.histogram[i] == q3_index){
+					q3 = (float) (i + (i + 1)) / 2;
+					marker_2 = 1;
+				}
+				else{
+					q3 = (float) (i + i) / 2;
+					marker_2 = 1;
+				}
+			}
 		}
 	}
 
@@ -438,8 +488,6 @@ int stats(FILE* f, void* res, char* filename){
     int sum = 0;
     int histogram[NVAL];
     memset(histogram, 0, NVAL);
-
-    printf("Current handling: %s\n", filename);
 
     if(fscanf(f, "%d", &c) == EOF)
     	return -1;

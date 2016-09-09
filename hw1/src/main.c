@@ -55,6 +55,7 @@ int main(int argc, char** argv) {
         files = nfiles(argv[3]);
 
     if(files == 0){ //no files in the directory
+        printf("No files present in the directory.\n");
         return EXIT_SUCCESS;
     }
     if(files == -1)

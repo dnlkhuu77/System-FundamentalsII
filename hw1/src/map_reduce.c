@@ -72,7 +72,7 @@ int validateargs(int argc, char** argv){ //2, 3, 4 arguments
 
 int nfiles(char* dir){
 	static int files = 0;
-	DIR* ptr;
+	DIR* ptr = NULL;
 	struct dirent *someptr;
 	char path[1024];
 
@@ -98,7 +98,6 @@ int nfiles(char* dir){
 	closedir(ptr);
 
 	if(files == 0){
-		printf("No files present in the directory.\n");
 		return 0;
 	}
 	else
@@ -106,11 +105,10 @@ int nfiles(char* dir){
 }
 
 int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, char* fn)){
-	DIR* ptr;
+	DIR* ptr = NULL;
 	struct dirent *someptr;
 	char path[1024];
 	int result = 0;
-	//int* x = (int*) results; //has to be int because the struct will be this size
 	memset(results, '$', size); //initialize the array
 
 	if((ptr = opendir(dir)) == NULL)
@@ -134,22 +132,16 @@ int map(char* dir, void* results, size_t size, int(*act)(FILE* f, void* res, cha
 			strcat(ans, "/");
 			strcat(ans, someptr->d_name);
 
-			//printf("%s\n", ans); //testing shit
-
 			FILE* fp = NULL;
 			if((fp = fopen(ans, "r")) == NULL){
 				return -1; //error in opening file
 			}
 			else{		
 				int acty = act(fp, results, someptr->d_name);
-				//*x = acty;//store the result into a space in results[]
 				results = results + size; //might have to increment by 4
 				result = result + acty; //add up all the results of act
-				//results[] = result;
-				//results = results + size;
 			}
 			fclose(fp);
-
 		}
 	}
 
@@ -168,7 +160,6 @@ struct Analysis analysis_reduce(int n, void* results){
 	for(int i = 0; i < n; i++){
 		imm = *ptr;
 		current_length = imm.lnlen;
-		//printf("Current File: %s\n", imm.filename);
 
 		if(current_length >= max_length){
 			max_length = current_length;
@@ -176,7 +167,7 @@ struct Analysis analysis_reduce(int n, void* results){
 			filename = imm.filename;
 		}
 
-		for(int j = 0; j < 127; j++){
+		for(int j = 0; j < 128; j++){
 			ans.ascii[j] = ans.ascii[j] + imm.ascii[j];
 		}
 
@@ -206,14 +197,11 @@ Stats stats_reduce(int n, void* results){
 		for(int j = 0; j < NVAL; j++){
 			ans.histogram[j] = ans.histogram[j] + imm.histogram[j];
 		}
-
 		ptr++;
 	}
 
 	ans.sum = sum;
 	ans.n = n_count;
-	//printf("Final Sum: %d\n", sum);
-	//printf("Final n: %d\n", n_count);
 	ans.filename = NULL;
 	return ans;
 }
@@ -238,7 +226,6 @@ void analysis_print(struct Analysis res, int nbytes, int hist){
 				printf("\n");
 			}
 		}
-
 	}
 }
 
@@ -290,9 +277,8 @@ void stats_print(Stats res, int hist){
 	int med_count = 0;
 	int marker = 0;
 
-	if(med_index % 2 == 1){ //if odd, pick the middle number
+	if(med_index % 1 != 0){ //if odd, pick the middle number
 		med_index++;
-
 		
 		for(int i = 0; i < NVAL; i++){
 			if(marker != 0)
@@ -305,7 +291,6 @@ void stats_print(Stats res, int hist){
 			}
 		}
 		
-		
 	}
 	else{ //even number of integers
 
@@ -315,7 +300,7 @@ void stats_print(Stats res, int hist){
 			med_count = med_count + res.histogram[i];
 
 			if(med_count >= med_index){
-				if(med_count + res.histogram[i] == med_index){
+				if(med_count == med_index){
 					median = (float) (i + (i + 1)) / 2;
 					marker = 1;
 				}
@@ -336,7 +321,7 @@ void stats_print(Stats res, int hist){
 	int q1_index = res.n * 0.25;
 	int q3_index = res.n * 0.75;
 
-	if(q1_index % 1 !=0){
+	if(q1_index % 1 !=0 || q1_index == 0){
 		q1_index++;
 
 		for(int i = 0; i < NVAL; i++){
@@ -358,7 +343,7 @@ void stats_print(Stats res, int hist){
 
 			count = count + res.histogram[i];
 			if(count >= q1_index){
-				if(count + res.histogram[i] == q1_index){
+				if(count == q1_index){
 					q1 = (float) (i + (i + 1)) / 2;
 					marker_2 = 1;
 				}
@@ -373,7 +358,7 @@ void stats_print(Stats res, int hist){
 	marker_2 = 0;
 	count = 0;
 
-	if(q3_index % 1 !=0){
+	if(q3_index % 1 !=0 || q3_index == 1){
 		q3_index++;
 
 		for(int i = 0; i < NVAL; i++){
@@ -395,7 +380,7 @@ void stats_print(Stats res, int hist){
 
 			count = count + res.histogram[i];
 			if(count >= q3_index){
-				if(count + res.histogram[i] == q3_index){
+				if(count == q3_index){
 					q3 = (float) (i + (i + 1)) / 2;
 					marker_2 = 1;
 				}
@@ -443,10 +428,6 @@ int analysis(FILE* f, void* res, char* filename){
         n++; //increment the bytes of the file
         n_line++; //increment the bytes of the line
 
-        //for(int i = 0; i < 128; i++){
-        //    if(c == i)
-        //        ascii[i]++;
-        //}
         a.ascii[(int) c]++;
 
         if(c == '\n'){
@@ -465,12 +446,6 @@ int analysis(FILE* f, void* res, char* filename){
 
     a.lnlen = n_max;
     a.lnno = line_max;
-    //printf("Max Length: %d\n", a.lnlen);
-    //printf("Max Line No: %d\n", a.lnno);
-
-    //for(int i = 0; i < 128; i++){
-    //	a.ascii[i] = ascii[i];
-    //}
 
     *ptr = a;
 
@@ -494,25 +469,18 @@ int stats(FILE* f, void* res, char* filename){
     rewind(f);
 
     while(fscanf(f, "%d", &c) != EOF) {
-        n++; //increment the number counter
-        sum = sum + c; 
+    	if(c >= 0 || c < NVAL){
+        	n++; //increment the number counter
+        	sum = sum + c; 
 
-        //for(int i = 0; i < NVAL; i++){
-        //	if(c == i){
-        //		histogram[i]++;
-        //	}
-        //}
-        s.histogram[c]++;
+        	s.histogram[c]++;
+    	}
     }
 
     s.sum = sum;
     //printf("Current Sum %d\n", sum);
     s.n = n;
     //printf("Current n: %d\n", n);
-
-    //for(int i = 0; i < NVAL; i++){
-    //	s.histogram[i] = histogram[i];
-    //}
 
     *ptr = s;
     printf("\n");

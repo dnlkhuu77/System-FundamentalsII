@@ -245,6 +245,7 @@ void stats_print(Stats res, int hist){
 			}
 
 		}
+		printf("\n");
 
 	}
 
@@ -293,7 +294,6 @@ void stats_print(Stats res, int hist){
 		
 	}
 	else{ //even number of integers
-
 		for(int i = 0; i < NVAL; i++){
 			if(marker != 0)
 				break;
@@ -301,7 +301,16 @@ void stats_print(Stats res, int hist){
 
 			if(med_count >= med_index){
 				if(med_count == med_index){
-					median = (float) (i + (i + 1)) / 2;
+					int i_2 = i;
+
+					for(int j = i + 1; j < NVAL; j++){ //find the (k+1)th element
+						if(res.histogram[j] != 0){
+							i_2 = j;
+							break;
+						}
+					}
+
+					median = (float) (i + i_2) / 2;
 					marker = 1;
 				}
 				else{
@@ -344,7 +353,16 @@ void stats_print(Stats res, int hist){
 			count = count + res.histogram[i];
 			if(count >= q1_index){
 				if(count == q1_index){
-					q1 = (float) (i + (i + 1)) / 2;
+					int i_2 = i;
+
+					for(int j = i + 1; j < NVAL; j++){ //find the (k+1)th element
+						if(res.histogram[j] != 0){
+							i_2 = j;
+							break;
+						}
+					}
+
+					q1 = (float) (i + i_2) / 2;
 					marker_2 = 1;
 				}
 				else{
@@ -381,7 +399,16 @@ void stats_print(Stats res, int hist){
 			count = count + res.histogram[i];
 			if(count >= q3_index){
 				if(count == q3_index){
-					q3 = (float) (i + (i + 1)) / 2;
+					int i_2 = i;
+
+					for(int j = i + 1; j < NVAL; j++){ //find the (k+1)th element
+						if(res.histogram[j] != 0){
+							i_2 = j;
+							break;
+						}
+					}
+
+					q3 = (float) (i + i_2) / 2;
 					marker_2 = 1;
 				}
 				else{

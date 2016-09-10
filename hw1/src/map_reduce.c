@@ -207,9 +207,16 @@ Stats stats_reduce(int n, void* results){
 }
 
 void analysis_print(struct Analysis res, int nbytes, int hist){
-	printf("File: %s\n", res.filename);
-	printf("Longest line length: %d\n", res.lnlen);
-	printf("Longest line number: %d\n", res.lnno);
+	if(res.lnlen != 0){
+		printf("File: %s\n", res.filename);
+		printf("Longest line length: %d\n", res.lnlen);
+		printf("Longest line number: %d\n", res.lnno);
+	}
+	else if(res.lnlen == 0){
+		printf("File: %s\n", res.filename);
+		printf("Longest line length: \n");
+		printf("Longest Line Number: \n");
+	}
 
 	if(hist != 0){ //print the histogram
 		printf("Total Bytes in directory: %d\n", nbytes);
@@ -222,7 +229,6 @@ void analysis_print(struct Analysis res, int nbytes, int hist){
 				for(int j = 0; j < res.ascii[i]; j++){
 					printf("-");
 				}
-				//printf("%d", res.ascii[i]);
 				printf("\n");
 			}
 		}
@@ -243,240 +249,235 @@ void stats_print(Stats res, int hist){
 				}
 				printf("\n");
 			}
-
 		}
 		printf("\n");
-
 	}
 
 	if(res.filename != NULL){
 		printf("File: %s\n", res.filename);
 	}
 
-	printf("Count: %d\n", res.n);
-	//printf("Sum %d\n", res.sum);
+	if(res.n != 0){
+		printf("Count: %d\n", res.n);
 
-	float mean = (float)res.sum / (float) res.n;
-	printf("Mean: %.6f\n", mean);
+		float mean = (float)res.sum / (float) res.n;
+		printf("Mean: %.6f\n", mean);
 
-
-	int max = 0; //use a array to count multiple occurence
-	for(int i = 0; i < NVAL; i++){
-		if(max < res.histogram[i])
-			max = res.histogram[i];
-	}
-	printf("Mode: ");
-	for(int i = 0; i < NVAL; i++){
-		if(res.histogram[i] == max)
-			printf("%d ", i);
-	}
-	printf("\n");
-
-
-	float median = 0;
-	int med_index = res.n / 2; //(the middle number in the list)
-	int med_count = 0;
-	int marker = 0;
-
-	if(med_index % 1 != 0){ //if odd, pick the middle number
-		med_index++;
-		
+		int max = 0; //use a array to count multiple occurence
 		for(int i = 0; i < NVAL; i++){
-			if(marker != 0)
-				break;
-
-			med_count = med_count + res.histogram[i];
-			if(med_count >= med_index){
-				median = i;
-				marker = 1;
-			}
+			if(max < res.histogram[i])
+				max = res.histogram[i];
+		}	
+		printf("Mode: ");
+		for(int i = 0; i < NVAL; i++){
+			if(res.histogram[i] == max)
+				printf("%d ", i);
 		}
+		printf("\n");
+
+
+		float median = 0;
+		int med_index = res.n / 2; //(the middle number in the list)
+		int med_count = 0;
+		int marker = 0;
+
+		if(res.n % 2 != 0){ //if odd, pick the middle number
+			med_index++;
 		
-	}
-	else{ //even number of integers
-		for(int i = 0; i < NVAL; i++){
-			if(marker != 0)
-				break;
-			med_count = med_count + res.histogram[i];
+			for(int i = 0; i < NVAL; i++){
+				if(marker != 0)
+					break;
 
-			if(med_count >= med_index){
-				if(med_count == med_index){
-					int i_2 = i;
-
-					for(int j = i + 1; j < NVAL; j++){ //find the (k+1)th element
-						if(res.histogram[j] != 0){
-							i_2 = j;
-							break;
-						}
-					}
-
-					median = (float) (i + i_2) / 2;
+				med_count = med_count + res.histogram[i];
+				if(med_count >= med_index){
+					median = i;
 					marker = 1;
 				}
-				else{
-					median = (float) (i + i) / 2;
-					marker = 1;
-				}
-			}
+			}	
 		}
+		else{ //even number of integers
+			for(int i = 0; i < NVAL; i++){
+				if(marker != 0)
+					break;
 
-	}
-	printf("Median: %.6f\n", median);
+				med_count = med_count + res.histogram[i];
 
+				if(med_count >= med_index){
+					if(med_count == med_index){
+						int i_2 = i + 1;
 
-	float q1, q3 = 0;
-	int count = 0;
-	int marker_2 = 0;
-	int q1_index = res.n * 0.25;
-	int q3_index = res.n * 0.75;
-
-	if(q1_index % 1 !=0 || q1_index == 0){
-		q1_index++;
-
-		for(int i = 0; i < NVAL; i++){
-			if(marker_2 != 0)
-				break;
-
-			count = count + res.histogram[i];
-			if(count >= q1_index){
-				q1 = i;
-				marker_2 = 1;
-			}
-		}
-	}
-	else{
-
-		for(int i = 0; i < NVAL; i++){
-			if(marker_2 != 0)
-				break;
-
-			count = count + res.histogram[i];
-			if(count >= q1_index){
-				if(count == q1_index){
-					int i_2 = i;
-
-					for(int j = i + 1; j < NVAL; j++){ //find the (k+1)th element
-						if(res.histogram[j] != 0){
-							i_2 = j;
-							break;
+						for(int j = i; j < NVAL; j++){ //find the (k+1)th element
+							if(res.histogram[j] != 0){
+								i_2 = j;
+								break;
+							}
 						}
+
+						median = (float) (i + i_2) / 2;
+						marker = 1;
 					}
-
-					q1 = (float) (i + i_2) / 2;
-					marker_2 = 1;
+					else{
+						median = (float) (i + i) / 2;
+						marker = 1;
+					}
 				}
-				else{
-					q1 = (float) (i + i) / 2;
+			}
+		}
+		printf("Median: %.6f\n", median);
+
+
+		float q1, q3 = 0;
+		int count = 0;
+		int marker_2 = 0;
+		int q1_index = res.n * 0.25;
+		int q3_index = res.n * 0.75;
+
+		if(res.n % 4 !=0 || q1_index == 0){
+			q1_index++;
+
+			for(int i = 0; i < NVAL; i++){
+				if(marker_2 != 0)
+					break;
+
+				count = count + res.histogram[i];
+				if(count >= q1_index){
+					q1 = i;
 					marker_2 = 1;
 				}
 			}
 		}
-	}
+		else{
+			for(int i = 0; i < NVAL; i++){
+				if(marker_2 != 0)
+					break;
 
-	marker_2 = 0;
-	count = 0;
+				count = count + res.histogram[i];
+				if(count >= q1_index){
+					if(count == q1_index){
+						int i_2 = i;
 
-	if(q3_index % 1 !=0 || q3_index == 1){
-		q3_index++;
-
-		for(int i = 0; i < NVAL; i++){
-			if(marker_2 != 0)
-				break;
-
-			count = count + res.histogram[i];
-			if(count >= q3_index){
-				q3 = i;
-				marker_2 = 1;
-			}
-		}
-	}
-	else{
-
-		for(int i = 0; i < NVAL; i++){
-			if(marker_2 != 0)
-				break;
-
-			count = count + res.histogram[i];
-			if(count >= q3_index){
-				if(count == q3_index){
-					int i_2 = i;
-
-					for(int j = i + 1; j < NVAL; j++){ //find the (k+1)th element
-						if(res.histogram[j] != 0){
-							i_2 = j;
-							break;
+						for(int j = i + 1; j < NVAL; j++){ //find the (k+1)th element
+							if(res.histogram[j] != 0){
+								i_2 = j;
+								break;
+							}
 						}
-					}
 
-					q3 = (float) (i + i_2) / 2;
-					marker_2 = 1;
+						q1 = (float) (i + i_2) / 2;
+						marker_2 = 1;
+					}
+					else{
+						q1 = (float) (i + i) / 2;
+						marker_2 = 1;
+					}
 				}
-				else{
-					q3 = (float) (i + i) / 2;
+			}
+		}
+
+		marker_2 = 0;
+		count = 0;
+
+		int inter = res.n * 3;
+
+		if(inter % 4 !=0 || q3_index == 1){
+			q3_index++;
+
+			for(int i = 0; i < NVAL; i++){
+				if(marker_2 != 0)
+					break;
+
+				count = count + res.histogram[i];
+				if(count >= q3_index){
+					q3 = i;
 					marker_2 = 1;
 				}
 			}
 		}
+		else{
+			for(int i = 0; i < NVAL; i++){
+				if(marker_2 != 0)
+					break;
+
+				count = count + res.histogram[i];
+				if(count >= q3_index){
+					if(count == q3_index){
+						int i_2 = i + 1;
+
+						for(int j = i; j < NVAL; j++){ //find the (k+1)th element
+							if(res.histogram[j] != 0){
+								i_2 = j;
+								break;
+							}
+						}
+
+						q3 = (float) (i + i_2) / 2;
+						marker_2 = 1;
+					}
+					else{
+						q3 = (float) (i + i) / 2;
+						marker_2 = 1;
+					}
+				}
+			}
+		}
+
+		printf("Q1: %.6f\n", q1);
+		printf("Q3: %.6f\n", q3);
+
+		int min, max_c = 0;
+		for(int i = 0; i < NVAL; i++){
+			if(res.histogram[i] != 0)
+				max_c = i;
+		}
+		for(int i = NVAL - 1; i >= 0; i--){
+			if(res.histogram[i] != 0)
+				min = i;
+		}
+		printf("Min: %d\n", min);
+		printf("Max: %d\n", max_c);
 	}
 
-	printf("Q1: %.6f\n", q1);
-	printf("Q3: %.6f\n", q3);
-
-	int min, max_c = 0;
-	for(int i = 0; i < NVAL; i++){
-		if(res.histogram[i] != 0)
-			max_c = i;
+	else if (res.n == 0){
+		printf("Count: 0\n");
+		printf("Mean: \n");
+		printf("Mode:\n");
+		printf("Median: \n");
+		printf("Q1: \n");
+		printf("Q3: \n");
+		printf("Min: \n");
+		printf("Max: \n");
 	}
-	for(int i = NVAL - 1; i >= 0; i--){
-		if(res.histogram[i] != 0)
-			min = i;
-	}
-	printf("Min: %d\n", min);
-	printf("Max: %d\n", max_c);
-
 }
 
 int analysis(FILE* f, void* res, char* filename){
     struct Analysis a = {0};
     struct Analysis* ptr = (struct Analysis*) res; //cast the void pointer
-    //printf("Currenly handing %s/n", filename);
     a.filename = strdup(filename);
     char c;
     int n = 0; //calculates bytes
     int n_line = 0; //calculates characters per line
-    int n_max = 0;
-    int line_counter = 0; //the longest line
-    int line_max = 0;
+    int line_counter = 1; //the longest line
     int ascii[128]; //count each ascii character
     memset(ascii, 0, 128); //initialize the array
 
     while((c = fgetc(f)) != EOF) {
-        //printf("%c", c);
         n++; //increment the bytes of the file
-        n_line++; //increment the bytes of the line
-
         a.ascii[(int) c]++;
 
         if(c == '\n'){
-            if(n_line >= n_max){
-                n_max = n_line;
-                line_max = line_counter;
+            if(n_line >= a.lnlen){
+                a.lnlen = n_line;
+                a.lnno = line_counter;
             }
 
             n_line = 0; //reset the bytes of a line 
             line_counter++; //increment the line count
         }
+        else
+        	n_line++;
     }
 
-    line_max = line_max + 1;
-    n_max = n_max - 1;
-
-    a.lnlen = n_max;
-    a.lnno = line_max;
-
     *ptr = a;
-
-    printf("\n");
     return n;
 }
 
@@ -491,8 +492,11 @@ int stats(FILE* f, void* res, char* filename){
     int histogram[NVAL];
     memset(histogram, 0, NVAL);
 
-    if(fscanf(f, "%d", &c) == EOF)
-    	return -1;
+    if(fscanf(f, "%d", &c) == EOF){
+    	*ptr = s;
+    	return 0;
+    }
+    
     rewind(f);
 
     while(fscanf(f, "%d", &c) != EOF) {
@@ -502,6 +506,8 @@ int stats(FILE* f, void* res, char* filename){
 
         	s.histogram[c]++;
     	}
+    	else
+    		return -1;
     }
 
     s.sum = sum;
@@ -510,6 +516,5 @@ int stats(FILE* f, void* res, char* filename){
     //printf("Current n: %d\n", n);
 
     *ptr = s;
-    printf("\n");
     return 0;
 }

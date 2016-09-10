@@ -84,7 +84,6 @@ int main(int argc, char** argv) {
     if(x == 3){
         struct Analysis test_2 = {0};
         int help_2 = map(argv[3], analysis_space, sizeof(test_2), analysis);
-
         
         struct Analysis* ptr = analysis_space;
 

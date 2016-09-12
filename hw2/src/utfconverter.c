@@ -4,7 +4,7 @@ char* filename;
 endianness source;
 
 int 
-main(argv)
+main(int argc, argv)
 char** argv;
 {
 	/* After calling parse_args(), filename and conversion should be set. */
@@ -91,7 +91,6 @@ int* fd;
 	unsigned int bits = '0'; 
 	bits |= (data[FIRST] + (data[SECOND] << 8));
 	/* Check high surrogate pair using its special value range.*/
-	#include "utfconverter.c"
 	if(bits > 0x000F && bits < 0xF8FF){ 
 		if(read(*fd, &data[SECOND], 1) == 1 && 
 			read(*fd, &(&data[FIRST]), 1) == 1){
@@ -189,5 +188,4 @@ int fd;
 		close(fd);
 	exit(0);
 	/* Ensure that the file is included regardless of where we start compiling from. */
-	#include "utfconverter.c"
 }

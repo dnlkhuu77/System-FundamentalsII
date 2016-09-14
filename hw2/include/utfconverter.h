@@ -35,7 +35,7 @@ typedef struct Glyph {
 } Glyph;
 
 /** The given filename. */
-char* filename;
+char filename[256];
 
 /** The usage statement. */
 const char* USAGE[4] = { 
@@ -59,7 +59,7 @@ endianness source;
  * @param glyph The pointer to the glyph struct to swap.
  * @return Returns a pointer to the glyph that has been swapped.
  */
-Glyph* swap_endianness (Glyph*);
+Glyph* swap_endianness P((Glyph*));
 
 /**
  * Fills in a glyph with the given data in data[2], with the given endianness 
@@ -72,14 +72,14 @@ Glyph* swap_endianness (Glyph*);
  * 			file.
  * @return Returns a pointer to the filled-in glyph.
  */
-Glyph* fill_glyph(Glyph*, unsigned char*, endianness, int*);
+Glyph* fill_glyph P((Glyph*, unsigned char*, endianness, int*));
 
 /**
  * Writes the given glyph's contents to stdout.
  *
  * @param glyph The pointer to the glyph struct to write to stdout.
  */
-void write_glyph(Glyph*);
+void write_glyph P((Glyph*));
 
 /**
  * Calls getopt() and parses arguments.
@@ -87,12 +87,12 @@ void write_glyph(Glyph*);
  * @param argc The number of arguments.
  * @param argv The arguments as an array of string.
  */
-void parse_args (int, char**);
+void parse_args P((int, char**));
 
 /**
  * Prints the usage statement.
  */
-void print_help (void);
+void print_help P((void));
 
 /**
  * Closes file descriptors and frees list and possibly does other
@@ -102,4 +102,4 @@ void print_help (void);
  * the macro value NO_FD (-1) to signify that we have no open file
  * to close.
  */
-void quit_converter (int);
+void quit_converter P((int));

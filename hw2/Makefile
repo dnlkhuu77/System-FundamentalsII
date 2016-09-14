@@ -15,8 +15,11 @@ utfconverter.o: src/utfconverter.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c src/utfconverter.c -o build/utfconverter.o
 
+debug: utfconverter.o
+	@mkdir -p bin
+	$(CC) $(CFLAGS) build/utfconverter.o -o bin/utfconverter 
+
 .PHONY: clean
 
 clean:
 	rm -rf bin build *.o utfconverter
-

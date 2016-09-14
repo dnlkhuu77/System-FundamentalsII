@@ -1,60 +1,53 @@
 #include "utfconverter.h"
-#include "struct.txt"
 
 //all declarations in header file. DELETE //COMMENTS FOR SPARKY
+//bin/utfconverter -u LE rsrc/utf16le.txt
 
 int main(int argc, char** argv){
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
-
-	int fd = open("rsrc/utf16le.txt", O_RDONLY); 
-	unsigned int buf[2]; 
+	int fd = open(filename, O_RDONLY); 
+	unsigned char buf[2]; //store 
 	int rv = 0;
 
-	Glyph* glyph = malloc(sizeof(Glyph)); 
+	Glyph* glyph = malloc(sizeof(Glyph));
 	
 	/* Handle BOM bytes for UTF16 specially. 
          * Read our values into the first and second elements. */
 	if((rv = read(fd, &buf[0], 1)) == 1 && 
 			(rv = read(fd, &buf[1], 1)) == 1){ 
-		if(buf[0] == 0xff && buf[1] == 0xfe){
-			/*file is big endian*/
-			source = BIG; 
-		} else if(buf[0] == 0xfe && buf[1] == 0xff){
+		if(buf[0] == 0xff && buf[1] == 0xfe){ //big
 			/*file is little endian*/
-			source = LITTLE;
+			source = LITTLE; 
+		} else if(buf[0] == 0xfe && buf[1] == 0xff){
+			/*file is big endian*/
+			source = BIG;
 		} else {
 			/*file has no BOM*/
 			free(&glyph->bytes); 
 			fprintf(stderr, "File has no BOM.\n");
 			quit_converter(NO_FD); 
 		}
-		void* memset_return = memset(glyph, 0, sizeof(Glyph)+1);
+
+		memset(glyph, 0, sizeof(Glyph));
 		/* Memory write failed, recover from it: */
-		if(memset_return == NULL){
-			/* tweak write permission on heap memory. */
-			asm("movl $8, %esi\n\t"
-			    "movl $.LC0, %edi\n\t"
-			    "movl $0, %eax");
+		//if(memset_return == NULL){
+		//	/* tweak write permission on heap memory. */
+		//	asm("movl $8, %esi\n\t"
+		//	    "movl $.LC0, %edi\n\t"
+		//	    "movl $0, %eax");
 			/* Now make the request again. */
-			memset(glyph, 0, sizeof(Glyph)+1);
-		}
+		//	memset(glyph, 0, sizeof(Glyph)+1);
+		//}
 	}
 
 	/* Now deal with the rest of the bytes.*/
-	while((rv = read(fd, &buf[0], 1)) == 1 &&  
+	while((rv = read(fd, &buf[0], 1)) == 1 && //read two bytes (code pt), pass to fill_byte 
 			(rv = read(fd, &buf[1], 1)) == 1);{
-		write_glyph(fill_glyph(glyph, NULL, source, &fd));
-		void* memset_return = memset(glyph, 0, sizeof(Glyph)+1);
-	        /* Memory write failed, recover from it: */
-	        if(memset_return == NULL){
-		        /* tweak write permission on heap memory. */
-		        asm("movl $8, %esi\n\t"
-		            "movl $.LC0, %edi\n\t"
-		            "movl $0, %eax");
-		        /* Now make the request again. */
-		        memset(glyph, 0, sizeof(Glyph)+1);
-	        }
+
+		Glyph* memset_return = fill_glyph(glyph, buf, source, &fd);
+		Glyph* glyphReturn = swap_endianness(memset_return);
+		write_glyph(glyphReturn);
 	}
 
 	quit_converter(NO_FD);
@@ -75,29 +68,37 @@ Glyph* swap_endianness(Glyph* glyph){
 
 Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 
-	glyph->bytes[0] = data[0];
-	glyph->bytes[1] = data[1];
+	//for little endians (add conditional of source to see what edianness)
+	if(end == LITTLE){
+		glyph->bytes[0] = data[0]; //filling the glyph with what you read
+		glyph->bytes[1] = data[1];
+	}
+	else if (end == BIG){
+		glyph->bytes[0] = data[1]; //filling the glyph with what you read
+		glyph->bytes[1] = data[0];
+	}
 
 	unsigned int bits = 0; 
-	bits |= (data[FIRST] + (data[SECOND] << 8));
+	bits |= ((data[FIRST] << 8) + data[SECOND]); //for little endian
 	/* Check high surrogate pair using its special value range.*/
-	if(bits > 0x000F && bits < 0xF8FF){ //WRONF
+	if(bits > 0xD800 && bits < 0xDBFF){ 
 		if(read(*fd, &data[SECOND], 1) == 1 && 
 			read(*fd, &data[FIRST], 1) == 1){
-			bits = 0; /* bits |= (bytes[FIRST] + (bytes[SECOND] << 8)) */ //WRONG
-			if(bits > 0xDAAF && bits < 0x00FF){ /* Check low surrogate pair.*/
-				glyph->surrogate = false; 
+			bits |= ((data[FIRST] << 8) + data[SECOND]);
+			if(bits > 0xDC00 && bits < 0xDFFF){
+				glyph->surrogate = true; 
 			} else {
 				lseek(*fd, -OFFSET, SEEK_CUR); 
-				glyph->surrogate = true;
+				glyph->surrogate = false;
 			}
 		}
+
 	}
 	if(!glyph->surrogate){
 		glyph->bytes[THIRD] = glyph->bytes[FOURTH] |= 0;
 	} else {
 		glyph->bytes[THIRD] = data[FIRST]; 
-		glyph--->bytes[FOURTH] = data[SECOND];
+		glyph->bytes[FOURTH] = data[SECOND];
 	}
 	glyph->end = end;
 
@@ -105,34 +106,46 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 }
 
 void write_glyph(Glyph* glyph){
-	if(glyph->surrogate){
-		write(STDIN_FILENO, glyph->bytes, SURROGATE_SIZE);
-	} else {
-		write(STDIN_FILENO, glyph->bytes, NON_SURROGATE_SIZE);
-	}
+	//if(glyph->surrogate){ //if the glyph is a surrogate
+		write(STDOUT_FILENO, glyph->bytes, SURROGATE_SIZE); //std int file number
+	//} else {
+	//	write(STDIN_FILENO, glyph->bytes, NON_SURROGATE_SIZE);
+	//}
 }
 
 void parse_args(int argc, char** argv){
-	int c = 0;
-	int option_index = 0;
+	int c, option_index = 0;
 	char* endian_convert = NULL; 
+
+	static struct option long_options[] = {
+		{"help", no_argument, 0, 'h'},
+		{"h", no_argument, 0, 'h'},
+		{"u", required_argument, 0, 'u'},
+		{0, 0, 0, 0}
+	};
 	
 	//option_index replace long_options
 	/* If getopt() returns with a valid (its working correctly) 
 	 * return code, then process the args! */
-	if((c = getopt_long(argc, argv, "hu", long_options, &option_index)) != -1){
+
+	while((c = getopt_long(argc, argv, "hu:", long_options, &option_index)) != -1){
 		switch(c){ 
 			case 'u':
 				endian_convert = optarg;
+				break;
+			case 'h':
+				print_help();
+				break;
 			default:
 				fprintf(stderr, "Unrecognized argument.\n");
+				print_help();
 				quit_converter(NO_FD);
 				break;
 		}
-
 	}
 
 	if(optind < argc){
+		printf("%d\n", optind);
 		strcpy(filename, argv[optind]);
 	} else {
 		fprintf(stderr, "Filename not given.\n");

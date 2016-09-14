@@ -35,7 +35,7 @@ typedef struct Glyph {
 } Glyph;
 
 /** The given filename. */
-extern char* filename;
+char* filename;
 
 /** The usage statement. */
 const char* USAGE[4] = { 
@@ -46,10 +46,11 @@ const char* USAGE[4] = {
 };
 
 /** Which endianness to convert to. */
-extern endianness conversion;
+endianness conversion;
 
 /** Which endianness the source file is in. */
-extern endianness source;
+endianness source;
+
 
 /**
  * A function that swaps the endianness of the bytes of an encoding from

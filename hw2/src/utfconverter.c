@@ -7,7 +7,7 @@ int main(int argc, char** argv){
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
 	int fd = open(filename, O_RDONLY); 
-	unsigned char buf[2] = {0}; //store 
+	unsigned char buf[2]; //store 
 	int rv = 0;
 
 	Glyph* glyph = malloc(sizeof(Glyph));
@@ -29,7 +29,7 @@ int main(int argc, char** argv){
 			quit_converter(NO_FD); 
 		}
 
-		memset(glyph, 0, sizeof(Glyph));
+		//memset(glyph, 0, sizeof(Glyph));
 	}
 
 	glyph = fill_glyph(glyph, buf, source, &fd); //print the BOM
@@ -48,6 +48,7 @@ int main(int argc, char** argv){
 		write_glyph(glyph);
 
 	}
+
 	free(glyph);
 	quit_converter(NO_FD);
 	return 0;
@@ -81,12 +82,12 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 	}
 
 	unsigned int bits = 0; 
-	bits |= ((data[FIRST] << 8) + data[SECOND]); //for little endian (|= means OR)
+	bits |= (data[FIRST] + (data[SECOND] << 8)); //for little endian (|= means OR)
 	/* Check high surrogate pair using its special value range.*/
 
 	if(bits > 0xD800 && bits < 0xDBFF){ 
 		if(read(*fd, &data[SECOND], 1) == 1 && read(*fd, &data[FIRST], 1) == 1){
-			bits |= ((data[FIRST] << 8) + data[SECOND]);
+			bits |= (data[FIRST] + (data[SECOND] << 8));
 
 			if(bits > 0xDC00 && bits < 0xDFFF){
 				glyph->surrogate = true; 
@@ -132,7 +133,7 @@ void parse_args(int argc, char** argv){
 	/* If getopt() returns with a valid (its working correctly) 
 	 * return code, then process the args! */
 
-	while((c = getopt_long(argc, argv, "hu:", long_options, &option_index)) != -1){
+	if((c = getopt_long(argc, argv, "hu:", long_options, &option_index)) != -1){
 		switch(c){ 
 			case 'u':
 				endian_convert = optarg;

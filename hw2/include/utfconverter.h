@@ -13,10 +13,10 @@
 #define NO_FD -1
 #define OFFSET 4
 
-#define FIRST  10000000
-#define SECOND 20000000
-#define THIRD  30000000
-#define FOURTH 40000000
+#define FIRST  1
+#define SECOND 2
+#define THIRD  3
+#define FOURTH 4
 
 #ifdef __STDC__
 #define P(x) x

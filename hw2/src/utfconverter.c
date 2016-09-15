@@ -15,7 +15,8 @@ int main(int argc, char** argv){
 	/* Handle BOM bytes for UTF16 specially. 
          * Read our values into the first and second elements. */
 	if((rv = read(fd, &buf[0], 1)) == 1 && 
-			(rv = read(fd, &buf[1], 1)) == 1){ 
+		(rv = read(fd, &buf[1], 1)) == 1){ 
+
 		if(buf[0] == 0xff && buf[1] == 0xfe){ //big
 			/*file is little endian*/
 			source = LITTLE; 
@@ -24,43 +25,49 @@ int main(int argc, char** argv){
 			source = BIG;
 		} else {
 			/*file has no BOM*/
-			free(&glyph->bytes); 
+			free(glyph); 
 			fprintf(stderr, "File has no BOM.\n");
 			quit_converter(NO_FD); 
 		}
 
 		memset(glyph, 0, sizeof(Glyph));
-		/* Memory write failed, recover from it: */
-		//if(memset_return == NULL){
-		//	/* tweak write permission on heap memory. */
-		//	asm("movl $8, %esi\n\t"
-		//	    "movl $.LC0, %edi\n\t"
-		//	    "movl $0, %eax");
-			/* Now make the request again. */
-		//	memset(glyph, 0, sizeof(Glyph)+1);
-		//}
 	}
+
+	glyph = fill_glyph(glyph, buf, source, &fd);
+		if(BIG != source)
+			glyph = swap_endianness(glyph);
+	write_glyph(glyph);
 
 	/* Now deal with the rest of the bytes.*/
 	while((rv = read(fd, &buf[0], 1)) == 1 && //read two bytes (code pt), pass to fill_byte 
-			(rv = read(fd, &buf[1], 1)) == 1);{
+			(rv = read(fd, &buf[1], 1)) == 1){
 
-		Glyph* memset_return = fill_glyph(glyph, buf, source, &fd);
-		Glyph* glyphReturn = swap_endianness(memset_return);
-		write_glyph(glyphReturn);
+		glyph = fill_glyph(glyph, buf, source, &fd);
+		printf("STUFF\n" );
+
+		if(BIG != source)
+			glyph = swap_endianness(glyph);
+		write_glyph(glyph);
 	}
-
+	free(glyph);
 	quit_converter(NO_FD);
 	return 0;
 }
 
 Glyph* swap_endianness(Glyph* glyph){
 	/* Use XOR to be more efficient with how we swap values. */
-	glyph->bytes[0] ^= glyph->bytes[1];
-	glyph->bytes[1] ^= glyph->bytes[0];
+	unsigned char helper;
+	//glyph->bytes[0] ^= glyph->bytes[1];
+	//glyph->bytes[1] ^= glyph->bytes[0];
+	helper = glyph->bytes[0];
+	glyph->bytes[0] = glyph->bytes[1];
+	glyph->bytes[1] = helper;
 	if(glyph->surrogate){  /* If a surrogate pair, swap the next two bytes. */
-		glyph->bytes[2] ^= glyph->bytes[3];
-		glyph->bytes[3] ^= glyph->bytes[2];
+		//glyph->bytes[2] ^= glyph->bytes[3];
+		//glyph->bytes[3] ^= glyph->bytes[2];
+		helper = glyph->bytes[2];
+		glyph->bytes[2] = glyph->bytes[3];
+		glyph->bytes[3] = helper;
 	}
 	glyph->end = conversion;
 	return glyph;
@@ -79,12 +86,15 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 	}
 
 	unsigned int bits = 0; 
-	bits |= ((data[FIRST] << 8) + data[SECOND]); //for little endian
+	bits |= ((data[FIRST] << 8) + data[SECOND]); //for little endian (|= means OR)
+	//bits |= ((glyph->bytes[0] << 8) + glyph->bytes[1]);
 	/* Check high surrogate pair using its special value range.*/
+	printf("%d\n", bits);
+
 	if(bits > 0xD800 && bits < 0xDBFF){ 
-		if(read(*fd, &data[SECOND], 1) == 1 && 
-			read(*fd, &data[FIRST], 1) == 1){
+		if(read(*fd, &data[SECOND], 1) == 1 && read(*fd, &data[FIRST], 1) == 1){
 			bits |= ((data[FIRST] << 8) + data[SECOND]);
+
 			if(bits > 0xDC00 && bits < 0xDFFF){
 				glyph->surrogate = true; 
 			} else {
@@ -94,6 +104,7 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 		}
 
 	}
+
 	if(!glyph->surrogate){
 		glyph->bytes[THIRD] = glyph->bytes[FOURTH] |= 0;
 	} else {
@@ -145,7 +156,6 @@ void parse_args(int argc, char** argv){
 	}
 
 	if(optind < argc){
-		printf("%d\n", optind);
 		strcpy(filename, argv[optind]);
 	} else {
 		fprintf(stderr, "Filename not given.\n");

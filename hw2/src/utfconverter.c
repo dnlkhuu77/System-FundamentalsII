@@ -1,7 +1,5 @@
 #include "utfconverter.h"
 
-//all declarations in header file. DELETE //COMMENTS FOR SPARKY
-
 int main(int argc, char** argv){
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
@@ -31,18 +29,18 @@ int main(int argc, char** argv){
 		memset(glyph, 0, sizeof(Glyph));
 	}
 
-	fill_glyph(glyph, buf, source, &fd); //print the BOM
-		if(source != BIG)
+	fill_glyph(glyph, buf, source, &fd);
+		if(conversion != LITTLE)
 			swap_endianness(glyph);
 	write_glyph(glyph);
 
 
 	/* Now deal with the rest oconversionf the bytes.*/
-	while((rv = read(fd, &buf[0], 1)) == 1 && //read two bytes (code pt), pass to fill_byte 
+	while((rv = read(fd, &buf[0], 1)) == 1 &&
 			(rv = read(fd, &buf[1], 1)) == 1){
 
 		glyph = fill_glyph(glyph, buf, source, &fd);
-		if(source!= BIG)
+		if(conversion!= LITTLE)
 			glyph = swap_endianness(glyph);
 		write_glyph(glyph);
 
@@ -132,7 +130,6 @@ void parse_args(int argc, char** argv){
 		{0, 0, 0, 0}
 	};
 	
-	//option_index replace long_options
 	/* If getopt() returns with a valid (its working correctly) 
 	 * return code, then process the args! */
 
@@ -164,7 +161,7 @@ void parse_args(int argc, char** argv){
 		print_help();
 	}
 
-	if(strcmp(endian_convert, "16LE") == 0){  //change this to 16LE
+	if(strcmp(endian_convert, "16LE") == 0){
 		conversion = LITTLE;
 	} else if(strcmp(endian_convert, "16BE") == 0){
 		conversion = BIG;

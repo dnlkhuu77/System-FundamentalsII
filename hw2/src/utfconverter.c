@@ -103,11 +103,17 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 
 
 	if(!glyph->surrogate){
-		glyph->bytes[THIRD] = '\0';
 		glyph->bytes[FOURTH] = '\0';
+		glyph->bytes[THIRD] = '\0';
 	} else {
-		glyph->bytes[THIRD] = data[FIRST]; 
-		glyph->bytes[FOURTH] = data[SECOND];
+		if(end == BIG){
+			glyph->bytes[THIRD] = data[SECOND]; 
+			glyph->bytes[FOURTH] = data[FIRST];
+		}
+		else{
+			glyph->bytes[THIRD] = data[FIRST]; 
+			glyph->bytes[FOURTH] = data[SECOND];
+		}
 	}
 
 	glyph->end = end;

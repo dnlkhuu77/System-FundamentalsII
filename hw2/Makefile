@@ -5,21 +5,19 @@ BIN = utfconverter
 CFLAGS = -g -Wall -Werror -Iinclude -pedantic -Wextra 
 REQ = $(SRC) $(wildcard include/*.h)
 
-all: utfconverter
+all: clean utf
 
-utfconverter: utfconverter.o
+utf: utf_convert.o
 	@mkdir -p bin
-	$(CC) $(CFLAGS) build/utfconverter.o -o bin/utfconverter
+	$(CC) $(CFLAGS) build/utf_convert.o -o bin/utf
 
-utfconverter.o: src/utfconverter.c
+utf_convert.o: src/utfconverter.c
 	@mkdir -p build
-	$(CC) $(CFLAGS) -c src/utfconverter.c -o build/utfconverter.o
+	$(CC) $(CFLAGS) -c src/utfconverter.c -o build/utf_convert.o
 
-debug: utfconverter.o
+debug: utf_convert.o
 	@mkdir -p bin
-	$(CC) $(CFLAGS) build/utfconverter.o -o bin/utfconverter 
-
-.PHONY: clean
+	$(CC) $(CFLAGS) build/utf_convert.o -o bin/utf
 
 clean:
-	rm -rf bin build *.o utfconverter
+	rm -rf bin build *.o utf

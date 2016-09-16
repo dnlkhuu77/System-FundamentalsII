@@ -7,16 +7,16 @@
 #include <stdbool.h>
 
 
-#define MAX_BYTES 2
-#define SURROGATE_SIZE 2
-#define NON_SURROGATE_SIZE 1
+#define MAX_BYTES 4
+#define SURROGATE_SIZE 4
+#define NON_SURROGATE_SIZE 2
 #define NO_FD -1
-#define OFFSET 4
+#define OFFSET 2
 
-#define FIRST  1
-#define SECOND 2
-#define THIRD  3
-#define FOURTH 4
+#define FIRST  0
+#define SECOND 1
+#define THIRD  2
+#define FOURTH 3
 
 #ifdef __STDC__
 #define P(x) x
@@ -72,7 +72,7 @@ Glyph* swap_endianness P((Glyph*));
  * 			file.
  * @return Returns a pointer to the filled-in glyph.
  */
-Glyph* fill_glyph P((Glyph*, unsigned char*, endianness, int*));
+Glyph* fill_glyph P((Glyph*, unsigned char[], endianness, int*));
 
 /**
  * Writes the given glyph's contents to stdout.

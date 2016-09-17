@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
+#include <dirent.h>
+#include <limits.h> 
 
 
 #define MAX_BYTES 4
@@ -106,3 +108,7 @@ void print_help P((void));
  * to close.
  */
 void quit_converter P((int));
+
+void verb1 P((char*));
+
+void verb2 P((char*));

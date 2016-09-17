@@ -1,10 +1,14 @@
 #include "utfconverter.h"
 
+int fd, fd2 = 0;
+int v_counter = 0;
+
 int main(int argc, char** argv){
 	unsigned char buf[2];
-	int fd, fd2 = 0;
+
 	int rv = 0;
 	Glyph* glyph= NULL;
+
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
 	fd = open(filename, O_RDONLY);
@@ -15,7 +19,6 @@ int main(int argc, char** argv){
 	/* Handle BOM bytes for UTF16 specially. 
          * Read our values into the first and second elements. */
 	if((rv = read(fd, &buf[0], 1)) == 1 && (rv = read(fd, &buf[1], 1)) == 1){
-
 		if(buf[0] == 0xfe && buf[1] == 0xff){
 			/*file is big endian*/
 			source = BIG; 
@@ -26,11 +29,14 @@ int main(int argc, char** argv){
 			/*file has no BOM*/
 			free(glyph); 
 			fprintf(stderr, "File has no BOM.\n");
-			quit_converter(NO_FD); 
+			quit_converter(fd);
+			quit_converter(fd2); 
 		}
-
 		memset(glyph, 0, sizeof(Glyph));
 	}
+
+	if(v_counter == 1)
+		verb1(filename);
 
 	fill_glyph(glyph, buf, source, &fd);
 		if(conversion != LITTLE)
@@ -51,7 +57,7 @@ int main(int argc, char** argv){
 
 	free(glyph);
 	quit_converter(fd);
-		quit_converter(fd2);
+	quit_converter(fd2);
 
 	return 0;
 }
@@ -141,14 +147,14 @@ void parse_args(int argc, char** argv){
 		{"h", no_argument, 0, 'h'},
 		{"UTF=", required_argument, 0, 'u'},
 		{"u", required_argument, 0, 'u'},
-		{"v", no_argument, 0, 'u'},
+		{"v", no_argument, 0, 'v'},
 		{0, 0, 0, 0}
 	};
 	
 	/* If getopt() returns with a valid (its working correctly) 
 	 * return code, then process the args! */
 
-	if((c = getopt_long(argc, argv, "hvu:", long_options, &option_index)) != -1){
+	while((c = getopt_long(argc, argv, "hvu:", long_options, &option_index)) != -1){
 		switch(c){ 
 			case 'u':
 				endian_convert = optarg;
@@ -156,16 +162,20 @@ void parse_args(int argc, char** argv){
 			case 'h':
 				print_help();
 				break;
+			case 'v':
+				v_counter++;
+				break;
 			default:
 				fprintf(stderr, "Unrecognized argument.\n");
 				print_help();
-				quit_converter(NO_FD);
+				quit_converter(fd);
+				quit_converter(fd2);
 				break;
 		}
 	}
 
 	if(optind < argc){
-		strcpy(filename, argv[optind]);
+			strcpy(filename, argv[optind]);
 	} else {
 		fprintf(stderr, "Filename not given.\n");
 		print_help();
@@ -175,15 +185,16 @@ void parse_args(int argc, char** argv){
 		fprintf(stderr, "Converson mode not given.\n");
 		print_help();
 	}
-	printf("%s\n", endian_convert);
 
 	if(strcmp(endian_convert, "16LE") == 0){
 		conversion = LITTLE;
 	} else if(strcmp(endian_convert, "16BE") == 0){
 		conversion = BIG;
 	} else {
-		quit_converter(NO_FD);
+		quit_converter(fd);
+		quit_converter(fd2);
 	}
+    
 }
 
 void print_help(void) {
@@ -191,7 +202,8 @@ void print_help(void) {
 	for(j = 0; j < 4; j++){
 		printf("%s", USAGE[j]); 
 	}
-	quit_converter(NO_FD);
+	quit_converter(fd);
+	quit_converter(fd2);
 }
 
 void quit_converter(int fd){
@@ -202,4 +214,81 @@ void quit_converter(int fd){
 		close(fd);
 	exit(0);
 	/* Ensure that the file is included regardless of where we start compiling from. */
+}
+
+void verb1(char* filename_sh){
+	int size;
+	float size_final;
+	char file_path[PATH_MAX + 1];
+	char *ptr;
+	struct stat file_size;
+	struct utsname os_name;
+	char* hostname;
+	hostname = (char*) malloc(1024);
+
+	size = file_size.st_size;
+	size_final = (float) size / 1000;
+	stat(filename_sh, &file_size);
+	fprintf(stderr, "Input file size: %.3f kb. \n", size_final);	
+
+	ptr = realpath(filename_sh, file_path);
+	fprintf(stderr, "Input file path: %s\n", ptr);
+
+	if(source == BIG)
+		fprintf(stderr, "Input file encoding: %s\n", "UTF16-BE");
+	else if(source == LITTLE)
+		fprintf(stderr, "Input file encoding: %s\n", "UTF16-LE");
+
+	if(conversion == BIG)
+		fprintf(stderr, "Output encoding: %s\n", "UTF16-BE");
+	else if(conversion == LITTLE)
+		fprintf(stderr, "Output encoding: %s\n", "UTF16-LE");
+
+	gethostname(hostname, 1023);
+	fprintf(stderr, "Hostmachine: %s\n", hostname);
+
+	uname(&os_name);
+	fprintf(stderr, "Operating System: %s\n", os_name.sysname);
+
+	quit_converter(fd);
+	quit_converter(fd2);
+}
+
+void verb2(char* filename_sh){
+	int size;
+	float size_final;
+	char file_path[PATH_MAX + 1];
+	char *ptr;
+	struct stat file_size;
+	struct utsname os_name;
+	char* hostname;
+	hostname = (char*) malloc(1024);
+
+	size = file_size.st_size;
+	size_final = (float) size / 1000;
+	stat(filename_sh, &file_size);
+	fprintf(stderr, "Input file size: %.3f kb. \n", size_final);	
+
+	ptr = realpath(filename_sh, file_path);
+	fprintf(stderr, "Input file path: %s\n", ptr);
+
+	if(source == BIG)
+		fprintf(stderr, "Input file encoding: %s\n", "UTF16-BE");
+	else if(source == LITTLE)
+		fprintf(stderr, "Input file encoding: %s\n", "UTF16-LE");
+
+	if(conversion == BIG)
+		fprintf(stderr, "Output encoding: %s\n", "UTF16-BE");
+	else if(conversion == LITTLE)
+		fprintf(stderr, "Output encoding: %s\n", "UTF16-LE");
+
+	gethostname(hostname, 1023);
+	fprintf(stderr, "Hostmachine: %s\n", hostname);
+
+	uname(&os_name);
+	fprintf(stderr, "Operating System: %s\n", os_name.sysname);
+
+	quit_converter(fd);
+	quit_converter(fd2);
+	
 }

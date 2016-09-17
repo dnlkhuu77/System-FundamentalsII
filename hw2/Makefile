@@ -2,7 +2,7 @@ CC = gcc
 SRC = $(wildcard src/*.c)
 INCLUDE =  include
 BIN = utfconverter
-CFLAGS = -g -Wall -Werror -Iinclude -pedantic -Wextra 
+CFLAGS = -g -Wall -Werror -Iinclude -pedantic -Wextra -DDEBUG
 REQ = $(SRC) $(wildcard include/*.h)
 
 all: clean utf

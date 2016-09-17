@@ -2,12 +2,13 @@
 
 int main(int argc, char** argv){
 	unsigned char buf[2];
-	int fd = 0;
+	int fd, fd2 = 0;
 	int rv = 0;
 	Glyph* glyph= NULL;
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
-	fd = open(filename, O_RDONLY); 
+	fd = open(filename, O_RDONLY);
+	fd2 = open(filename2, O_WRONLY);
 
 	glyph = malloc(sizeof(Glyph));
 	
@@ -34,7 +35,7 @@ int main(int argc, char** argv){
 	fill_glyph(glyph, buf, source, &fd);
 		if(conversion != LITTLE)
 			swap_endianness(glyph);
-	write_glyph(glyph);
+	write_glyph(glyph,fd2);
 
 
 	/* Now deal with the rest oconversionf the bytes.*/
@@ -44,12 +45,14 @@ int main(int argc, char** argv){
 		glyph = fill_glyph(glyph, buf, source, &fd);
 		if(conversion!= LITTLE)
 			glyph = swap_endianness(glyph);
-		write_glyph(glyph);
+		write_glyph(glyph,fd2);
 
 	}
 
 	free(glyph);
-	quit_converter(NO_FD);
+	quit_converter(fd);
+		quit_converter(fd2);
+
 	return 0;
 }
 
@@ -121,11 +124,11 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 	return glyph;
 }
 
-void write_glyph(Glyph* glyph){
+void write_glyph(Glyph* glyph,int fd){
 	if(glyph->surrogate){ 
-		write(STDOUT_FILENO, glyph->bytes, SURROGATE_SIZE); 
+		write(fd, glyph->bytes, SURROGATE_SIZE); 
 	} else {
-		write(STDOUT_FILENO, glyph->bytes, NON_SURROGATE_SIZE);
+		write(fd, glyph->bytes, NON_SURROGATE_SIZE);
 	}
 }
 
@@ -136,14 +139,16 @@ void parse_args(int argc, char** argv){
 	static struct option long_options[] = {
 		{"help", no_argument, 0, 'h'},
 		{"h", no_argument, 0, 'h'},
+		{"UTF=", required_argument, 0, 'u'},
 		{"u", required_argument, 0, 'u'},
+		{"v", no_argument, 0, 'u'},
 		{0, 0, 0, 0}
 	};
 	
 	/* If getopt() returns with a valid (its working correctly) 
 	 * return code, then process the args! */
 
-	if((c = getopt_long(argc, argv, "hu:", long_options, &option_index)) != -1){
+	if((c = getopt_long(argc, argv, "hvu:", long_options, &option_index)) != -1){
 		switch(c){ 
 			case 'u':
 				endian_convert = optarg;
@@ -170,6 +175,7 @@ void parse_args(int argc, char** argv){
 		fprintf(stderr, "Converson mode not given.\n");
 		print_help();
 	}
+	printf("%s\n", endian_convert);
 
 	if(strcmp(endian_convert, "16LE") == 0){
 		conversion = LITTLE;

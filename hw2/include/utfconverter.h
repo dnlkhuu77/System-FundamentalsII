@@ -5,6 +5,8 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <sys/utsname.h>
 
 
 #define MAX_BYTES 4
@@ -36,6 +38,7 @@ typedef struct Glyph {
 
 /** The given filename. */
 char filename[256];
+char filename2[256] = "output.txt";
 
 /** The usage statement. */
 const char* USAGE[4] = { 
@@ -79,7 +82,7 @@ Glyph* fill_glyph P((Glyph*, unsigned char[], endianness, int*));
  *
  * @param glyph The pointer to the glyph struct to write to stdout.
  */
-void write_glyph P((Glyph*));
+void write_glyph P((Glyph*,int));
 
 /**
  * Calls getopt() and parses arguments.

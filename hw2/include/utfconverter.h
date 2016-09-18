@@ -9,6 +9,9 @@
 #include <sys/utsname.h>
 #include <dirent.h>
 #include <limits.h> 
+#include <sys/time.h>
+#include <sys/times.h>
+#include <time.h>
 
 
 #define MAX_BYTES 4

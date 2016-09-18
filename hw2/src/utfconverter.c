@@ -5,6 +5,8 @@ int v_counter = 0;
 float ascii_count, ascii_total = 0;
 float surr_count, surr_total = 0;
 int glyph_total = 0; /*We are counting the BOM*/
+static clock_t read_start, read_end, write_start, write_end, convert_start, convert_end = 0;
+static struct tms read_start2, read_end2, convert_start2, convert_end2, write_start2, write_end2;
 
 int main(int argc, char** argv){
 	unsigned char buf[2];
@@ -22,6 +24,10 @@ int main(int argc, char** argv){
 	
 	/* Handle BOM bytes for UTF16 specially. 
          * Read our values into the first and second elements. */
+	read_start = clock();
+	times(&read_start2);
+	times(&convert_start2);
+	times(&write_start2);
 	if((rv = read(fd, &buf[0], 1)) == 1 && (rv = read(fd, &buf[1], 1)) == 1){
 		if(buf[0] == 0xfe && buf[1] == 0xff){
 			/*file is big endian*/
@@ -38,10 +44,13 @@ int main(int argc, char** argv){
 		}
 		memset(glyph, 0, sizeof(Glyph));
 	}
-
+	convert_start = clock();
 	fill_glyph(glyph, buf, source, &fd);
+
 		if(conversion != LITTLE)
 			swap_endianness(glyph);
+
+	write_start = clock();
 	write_glyph(glyph,fd2);
 
 
@@ -54,11 +63,19 @@ int main(int argc, char** argv){
 		ascii_total++;
 
 		glyph = fill_glyph(glyph, buf, source, &fd);
+
 		if(conversion!= LITTLE)
 			glyph = swap_endianness(glyph);
+
 		write_glyph(glyph,fd2);
 
 	}
+	read_end = clock();
+	convert_end = clock();
+	write_end = clock();
+	times(&read_end2);
+	times(&convert_end2);
+	times(&write_end2);
 
 	free(glyph);
 
@@ -291,6 +308,7 @@ void verb2(char* filename_sh){
 	struct stat file_size;
 	struct utsname os_name;
 	char* hostname;
+	float read_real, convert_real, write_real;
 	hostname = (char*) malloc(1024);
 
 	stat(filename_sh, &file_size);
@@ -317,9 +335,20 @@ void verb2(char* filename_sh){
 	uname(&os_name);
 	fprintf(stderr, "Operating System: %s\n", os_name.sysname);
 
-	fprintf(stderr, "Reading: %s\n", "STUFF");
-	fprintf(stderr, "Converting: %s\n", "STUFF");
-	fprintf(stderr, "Writing: %s\n", "STUFF");
+	read_real = (float) (read_end - read_start) / CLOCKS_PER_SEC;
+	convert_real = (float) (convert_end - convert_start) / CLOCKS_PER_SEC;
+	write_real = (float) (write_end - write_start) / CLOCKS_PER_SEC;
+
+	fprintf(stderr, "Reading: real=%.1f, user=%.1f, sys=%.1f\n", read_real,
+		(double) (read_end2.tms_utime - read_start2.tms_utime),
+		(double) (read_end2.tms_stime - read_start2.tms_stime));
+	fprintf(stderr, "Converting: real=%.1f, user=%.1f, sys=%.1f\n", convert_real,
+		(double) (convert_end2.tms_utime - convert_start2.tms_utime),
+		(double) (convert_end2.tms_stime - convert_start2.tms_stime));
+	fprintf(stderr, "Writing: real=%.1f, user=%.1f, sys=%.1f\n", write_real,
+		(double) (write_end2.tms_utime - write_start2.tms_utime),
+		(double) (write_end2.tms_stime - write_start2.tms_stime)
+		);
 
 	if(ascii_total != 0)
 		fprintf(stderr, "ASCII: %.0f%%\n", ((ascii_count / ascii_total) * 100));

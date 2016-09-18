@@ -2,10 +2,12 @@
 
 int fd, fd2 = 0;
 int v_counter = 0;
+float ascii_count, ascii_total = 0;
+float surr_count, surr_total = 0;
+int glyph_total = 0; /*We are counting the BOM*/
 
 int main(int argc, char** argv){
 	unsigned char buf[2];
-
 	int rv = 0;
 	Glyph* glyph= NULL;
 
@@ -35,9 +37,6 @@ int main(int argc, char** argv){
 		memset(glyph, 0, sizeof(Glyph));
 	}
 
-	if(v_counter == 1)
-		verb1(filename);
-
 	fill_glyph(glyph, buf, source, &fd);
 		if(conversion != LITTLE)
 			swap_endianness(glyph);
@@ -48,6 +47,10 @@ int main(int argc, char** argv){
 	while((rv = read(fd, &buf[0], 1)) == 1 &&
 			(rv = read(fd, &buf[1], 1)) == 1){
 
+		if(buf[0] < 128 && buf[1] < 128)
+			ascii_count++;
+		ascii_total++;
+
 		glyph = fill_glyph(glyph, buf, source, &fd);
 		if(conversion!= LITTLE)
 			glyph = swap_endianness(glyph);
@@ -56,6 +59,12 @@ int main(int argc, char** argv){
 	}
 
 	free(glyph);
+
+	if(v_counter == 1)
+		verb1(filename);
+	else if (v_counter > 1)
+		verb2(filename);
+
 	quit_converter(fd);
 	quit_converter(fd2);
 
@@ -101,6 +110,7 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 
 			if(bits > 0xDC00 && bits < 0xDFFF){
 				glyph->surrogate = true; 
+				surr_count++;
 			} else {
 				printf("Invalid\n");
 				print_help();
@@ -109,6 +119,7 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 
 	}else
 		glyph->surrogate = false;
+	surr_total++;
 
 
 	if(!glyph->surrogate){
@@ -118,6 +129,9 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 		if(end == BIG){
 			glyph->bytes[THIRD] = data[SECOND]; 
 			glyph->bytes[FOURTH] = data[FIRST];
+			glyph_total++;
+			ascii_total++;
+			surr_total++;
 		}
 		else{
 			glyph->bytes[THIRD] = data[FIRST]; 
@@ -126,15 +140,24 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 	}
 
 	glyph->end = end;
-
+	glyph_total++;
 	return glyph;
 }
 
 void write_glyph(Glyph* glyph,int fd){
-	if(glyph->surrogate){ 
-		write(fd, glyph->bytes, SURROGATE_SIZE); 
-	} else {
-		write(fd, glyph->bytes, NON_SURROGATE_SIZE);
+	if(fd != 0){
+		if(glyph->surrogate){ 
+			write(fd, glyph->bytes, SURROGATE_SIZE);
+		} else {
+			write(fd, glyph->bytes, NON_SURROGATE_SIZE);
+		}
+	}
+	else{
+		if(glyph->surrogate){ 
+			write(STDOUT_FILENO, glyph->bytes, SURROGATE_SIZE);
+		} else {
+			write(STDOUT_FILENO, glyph->bytes, NON_SURROGATE_SIZE);
+		}
 	}
 }
 
@@ -226,9 +249,9 @@ void verb1(char* filename_sh){
 	char* hostname;
 	hostname = (char*) malloc(1024);
 
+	stat(filename_sh, &file_size);
 	size = file_size.st_size;
 	size_final = (float) size / 1000;
-	stat(filename_sh, &file_size);
 	fprintf(stderr, "Input file size: %.3f kb. \n", size_final);	
 
 	ptr = realpath(filename_sh, file_path);
@@ -264,9 +287,9 @@ void verb2(char* filename_sh){
 	char* hostname;
 	hostname = (char*) malloc(1024);
 
+	stat(filename_sh, &file_size);
 	size = file_size.st_size;
 	size_final = (float) size / 1000;
-	stat(filename_sh, &file_size);
 	fprintf(stderr, "Input file size: %.3f kb. \n", size_final);	
 
 	ptr = realpath(filename_sh, file_path);
@@ -287,6 +310,20 @@ void verb2(char* filename_sh){
 
 	uname(&os_name);
 	fprintf(stderr, "Operating System: %s\n", os_name.sysname);
+
+	fprintf(stderr, "Reading: %s\n", "STUFF");
+	fprintf(stderr, "Converting: %s\n", "STUFF");
+	fprintf(stderr, "Writing: %s\n", "STUFF");
+
+	if(ascii_total != 0)
+		fprintf(stderr, "ASCII: %.0f%%\n", ((ascii_count / ascii_total) * 100));
+	else
+		fprintf(stderr, "ASCII: 0\n");
+
+	if(surr_total != 0)
+		fprintf(stderr, "Surrogates: %.0f%%\n", ((surr_count / surr_total) * 100));
+
+	fprintf(stderr, "Glyphs: %d\n", glyph_total);
 
 	quit_converter(fd);
 	quit_converter(fd2);

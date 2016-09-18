@@ -147,7 +147,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 }
 
 void write_glyph(Glyph* glyph, int fd_2){
-	printf("fd_2: %d\n", fd_2);
 	if(fd_2 != 0){
 		if(glyph->surrogate){ 
 			write(fd_2, glyph->bytes, SURROGATE_SIZE);

@@ -14,7 +14,9 @@ int main(int argc, char** argv){
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
 	fd = open(filename, O_RDONLY);
-	fd2 = open(filename2, O_WRONLY);
+	if(filename2 != NULL)
+		fd2 = open(filename2, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IROTH | S_IRGRP
+			| S_IWUSR | S_IWGRP | S_IWOTH);
 
 	glyph = malloc(sizeof(Glyph));
 	
@@ -68,7 +70,7 @@ int main(int argc, char** argv){
 	quit_converter(fd);
 	quit_converter(fd2);
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 Glyph* swap_endianness(Glyph* glyph){
@@ -144,15 +146,16 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[2], endianness end, int* fd){
 	return glyph;
 }
 
-void write_glyph(Glyph* glyph,int fd){
-	if(fd != 0){
+void write_glyph(Glyph* glyph, int fd_2){
+	printf("fd_2: %d\n", fd_2);
+	if(fd_2 != 0){
 		if(glyph->surrogate){ 
-			write(fd, glyph->bytes, SURROGATE_SIZE);
+			write(fd_2, glyph->bytes, SURROGATE_SIZE);
 		} else {
-			write(fd, glyph->bytes, NON_SURROGATE_SIZE);
+			write(fd_2, glyph->bytes, NON_SURROGATE_SIZE);
 		}
 	}
-	else{
+	else if (fd_2 == 0){
 		if(glyph->surrogate){ 
 			write(STDOUT_FILENO, glyph->bytes, SURROGATE_SIZE);
 		} else {
@@ -202,6 +205,10 @@ void parse_args(int argc, char** argv){
 	} else {
 		fprintf(stderr, "Filename not given.\n");
 		print_help();
+	}
+
+	if(argv[optind + 1] != NULL){
+		strcpy(filename2, argv[optind + 1]);
 	}
 
 	if(endian_convert == NULL){

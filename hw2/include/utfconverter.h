@@ -40,7 +40,7 @@ typedef struct Glyph {
 
 /** The given filename. */
 char filename[256];
-char filename2[256] = "output.txt";
+char filename2[256];
 
 /** The usage statement. */
 const char* USAGE[4] = { 

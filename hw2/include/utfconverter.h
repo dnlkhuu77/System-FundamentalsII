@@ -32,7 +32,7 @@
 #endif
 
 /** The enum for endianness. */
-typedef enum {LITTLE, BIG} endianness;
+typedef enum {LITTLE, BIG, UTF8} endianness;
 
 /** The struct for a codepoint glyph. */
 typedef struct Glyph {
@@ -82,6 +82,8 @@ Glyph* swap_endianness P((Glyph*));
  */
 Glyph* fill_glyph P((Glyph*, unsigned char[], endianness, int*));
 
+//void bom_helper P((unsigned char*, endianness, int*));
+
 /**
  * Writes the given glyph's contents to stdout.
  *
@@ -115,3 +117,5 @@ void quit_converter P((int));
 void verb1 P((char*));
 
 void verb2 P((char*));
+
+Glyph* convert P((Glyph*, endianness));

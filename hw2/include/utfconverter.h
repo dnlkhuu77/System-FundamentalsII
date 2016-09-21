@@ -31,6 +31,14 @@
 #define P(x) ()
 #endif
 
+unsigned char a1;
+			
+unsigned char a2;
+
+unsigned char a3;
+			
+unsigned char a4;
+
 /** The enum for endianness. */
 typedef enum {LITTLE, BIG, UTF8} endianness;
 
@@ -45,7 +53,7 @@ typedef struct Glyph {
 char filename[256];
 char filename2[256];
 
-/** The usage statement. */
+/** The usage statement. UPDATE THIS!!!!!!!!!!!!!!!!!!!!!! */
 const char* USAGE[4] = { 
 "Usage:  ./utfconverter FILENAME [OPTION]\n\t",
 "./utfconverter -h\t\t\tDisplays this usage statement.\n\t",
@@ -69,6 +77,8 @@ endianness source;
  */
 Glyph* swap_endianness P((Glyph*));
 
+int how_many_bytes(unsigned char[]);
+
 /**
  * Fills in a glyph with the given data in data[2], with the given endianness 
  * by end.
@@ -81,8 +91,6 @@ Glyph* swap_endianness P((Glyph*));
  * @return Returns a pointer to the filled-in glyph.
  */
 Glyph* fill_glyph P((Glyph*, unsigned char[], endianness, int*));
-
-//void bom_helper P((unsigned char*, endianness, int*));
 
 /**
  * Writes the given glyph's contents to stdout.

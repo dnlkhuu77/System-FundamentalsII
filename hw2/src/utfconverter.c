@@ -31,7 +31,7 @@ int main(int argc, char** argv){
 	times(&write_start2);
 	if((rv = read(fd, &buf[0], 1)) == 1 && (rv = read(fd, &buf[1], 1)) == 1){
 
-		rv = read(fd, &buf[2], 1); //read the third byte for the UTF8 BOM
+		rv = read(fd, &buf[2], 1);
 
 		if(buf[0] == 0xef && buf[1] == 0xbb && buf[2] == 0xbf){
 			source = UTF8;
@@ -48,6 +48,7 @@ int main(int argc, char** argv){
 			fprintf(stderr, "File has no BOM.\n");
 			quit_converter(fd);
 			quit_converter(fd2); 
+			return EXIT_FAILURE;
 		}
 		memset(glyph, 0, sizeof(Glyph));
 
@@ -60,64 +61,68 @@ int main(int argc, char** argv){
 	if(source != UTF8)
 		fill_glyph(glyph, buf, source, &fd);
 	else if (source == UTF8){
-		if(conversion == LITTLE){
 			buf[0] = 0xff;
 			buf[1] = 0xfe;
 			fill_glyph(glyph, buf, conversion, &fd);
-			write_glyph(glyph, fd2);
-		}
-		if(conversion == BIG){
-			buf[0] = 0xfe;
-			buf[1] = 0xff;
-			fill_glyph(glyph, buf, conversion, &fd);
-			write_glyph(glyph, fd2);
-		}
 	}
 
-	if(conversion != LITTLE && source != UTF8) //it must not be utf8
+	if(conversion != LITTLE && source != UTF8)
 		swap_endianness(glyph);
 
 	write_start = clock();
 	write_glyph(glyph,fd2);
 
 
+	if(source != UTF8){
 	/* Now deal with the rest oconversionf the bytes.*/
-	while((rv = read(fd, &buf[0], 1)) == 1 &&
-			(rv = read(fd, &buf[1], 1)) == 1){
+		while((rv = read(fd, &buf[0], 1)) == 1 &&
+				(rv = read(fd, &buf[1], 1)) == 1){
 
-		if(source != UTF8){
 			if(buf[0] < 128 && buf[1] < 128)
 				ascii_count++;
 			ascii_total++;
-		}
 
-		if(source == UTF8){
-			if(num_bytes == 1){
-				glyph = fill_glyph(glyph, buf, source, &fd);
-				glyph = convert(glyph, conversion);
-			}
-			else if(num_bytes == 2){
-				glyph = fill_glyph(glyph, buf, source, &fd);
-				glyph = convert(glyph, conversion);
-			}
-			if(num_bytes == 3){
-				if((rv = read(fd, &buf[2], 1)) == 1)
-					glyph = fill_glyph(glyph, buf, source, &fd);
-				glyph = convert(glyph, conversion);
-			} else if(num_bytes == 4){
-				if((rv = read(fd, &buf[2], 1)) == 1 && (rv = read(fd, &buf[3], 1)) ==1)
-					glyph = fill_glyph(glyph, buf, source, &fd);
-				glyph = convert(glyph, conversion);
-			}
-		}
-
-		if(source != UTF8)
 			glyph = fill_glyph(glyph, buf, source, &fd);
 
-		if(conversion!= LITTLE && source != UTF8)
-			glyph = swap_endianness(glyph);
+			if(conversion!= LITTLE && source != UTF8)
+				glyph = swap_endianness(glyph);
 
-		write_glyph(glyph,fd2);
+			write_glyph(glyph,fd2);
+		}
+	}
+
+	else if(source == UTF8){
+
+		while((rv = read(fd, &buf[0], 1)) == 1){
+
+			num_bytes = how_many_bytes(buf);
+			/*printf("How many bytes: %d\n", num_bytes);*/
+
+			if(num_bytes == 1)
+				glyph = fill_glyph(glyph, buf, source, &fd);
+			else if(num_bytes == 2){
+				if((rv = read(fd, &buf[1], 1)) == 1)
+					glyph = fill_glyph(glyph, buf, source, &fd);
+				else
+					print_help();
+			}
+			else if(num_bytes == 3){
+				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1)
+					glyph = fill_glyph(glyph, buf, source, &fd);
+				else
+					print_help();
+			}
+			else if(num_bytes == 4){
+				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1 && 
+					(rv = read(fd, &buf[3], 1)) == 1)
+					glyph = fill_glyph(glyph, buf, source, &fd);
+				else
+					print_help();
+			}
+
+			glyph = convert(glyph, conversion);
+			write_glyph(glyph, fd2);
+		}
 
 	}
 
@@ -156,8 +161,29 @@ Glyph* swap_endianness(Glyph* glyph){
 	return glyph;
 }
 
+int how_many_bytes(unsigned char data[1]){
+		if((data[FIRST] >> 7) == 0){
+			return 1;
+		}
+		else{
+			if((data[FIRST] >> 5) == 0x06){
+				return 2;
+			}
+			else if((data[FIRST] >> 4) == 0xe){ 
+				return 3;
+			}
+			else if((data[FIRST] >> 3) == 0x1e){
+				return 4;
+			}
+			else{
+				print_help(); 
+			}
+		}
+		return 0;
+}
+
 Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, int* fd){
-		unsigned int bits;
+	unsigned int bits;
 
 	if(end == LITTLE){
 		glyph->bytes[0] = data[0];
@@ -168,42 +194,44 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 		glyph->bytes[1] = data[0];
 	}
 	else if(end == UTF8){
-		printf("%8x\n", data[FIRST]);
-		if((data[FIRST] >> 7) == 0){
+		/*fprintf(stderr, "FILL GLYPH: %8x\n", data[FIRST]);
+		fprintf(stderr, "HOW MANY BYTES MOVED %d\n", num_bytes);*/
+		if(num_bytes == 1){
 			glyph->bytes[0] = data[0];
+			glyph->bytes[1] = 0;;
+			glyph->bytes[2] = 0;
+			glyph->bytes[3] = 0;
 			glyph->end = end;
 			glyph->surrogate = false;
 			num_bytes = 1;
-			lseek(*fd, -sizeof(unsigned char), SEEK_CUR); 
 			return glyph;
 		}
 		else{
-			if((data[FIRST] >> 5) == 0x06){
+			if(num_bytes == 2){
+				/*fprintf(stderr, "SECOND BYTE %8x\n", data[SECOND]);*/
 				glyph->bytes[0] = data[0];
 				glyph->bytes[1] = data[1];
-				glyph->bytes[2] = '\0';
-				glyph->bytes[3] = '\0';
+				glyph->bytes[2] = 0;
+				glyph->bytes[3] = 0;
 				glyph->end = end;
 				glyph->surrogate = false;
 				num_bytes = 2;
 				return glyph;
 			}
-			else if((data[FIRST] >> 4) == 0x14){
-				if (read(*fd, &data[2], 1) != 1)
-					print_help();
+			else if(num_bytes == 3){ 
+				/*fprintf(stderr, "SECOND BYTE %8x\n", data[SECOND]);
+				fprintf(stderr, "THIRD BYTE: %8x\n", data[THIRD]);*/
 
 				glyph->bytes[0] = data[0];
 				glyph->bytes[1] = data[1];
 				glyph->bytes[2] = data[2];
-				glyph->bytes[3] = '\0';
+				glyph->bytes[3] = 0;
 				glyph->end = end;
 				glyph->surrogate = false;
 				num_bytes = 3;
 				return glyph;
 			}
-			else if((data[FIRST] >> 3) == 0x30){
-				if (!(read(*fd, &data[2], 1) == 1) && !(read(*fd, &data[3], 1) == 1))
-					print_help();
+			else if(num_bytes == 4){
 
 				glyph->bytes[0] = data[0];
 				glyph->bytes[1] = data[1];
@@ -215,7 +243,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 				return glyph;
 			}
 			else{
-				printf("STUFF2\n");
 				print_help(); 
 			}
 		}
@@ -477,29 +504,131 @@ void verb2(char* filename_sh){
 
 Glyph* convert(Glyph* glyph, endianness end){
 	if(num_bytes == 1){
-		glyph->bytes[0] = glyph->bytes[0] & 0x7f;
+		if(end == LITTLE){
+			glyph->bytes[0] = glyph->bytes[0];
+			glyph->bytes[1] = 0;
+		}else if(end == BIG){
+			glyph->bytes[1] = glyph->bytes[0];
+
+			glyph->bytes[0] = 0;
+		}
+		glyph->bytes[2] = 0;
+		glyph->bytes[3] = 0;
 	}
 	else{
 		if(num_bytes == 2){
+			unsigned int temp;
+			unsigned int temp2;
+			temp = 0;
+
 			glyph->bytes[0] = glyph->bytes[0] & 0x1f;
 			glyph->bytes[1] = glyph->bytes[1] & 0x3f;
 
+			temp += glyph->bytes[0]; 
+			temp = temp << 6;
+			temp2 = glyph->bytes[1];
+			temp2 = temp2;
+			temp += temp2;
+
+			if(end == LITTLE){
+				glyph->bytes[0] = temp;
+				glyph->bytes[1] = 0;
+			}else if(end == BIG){
+				glyph->bytes[1] = temp;
+				glyph->bytes[0] = 0;
+			}
+
+			glyph->bytes[2] = 0;
+			glyph->bytes[3] = 0;
+
 		}
+
 		else if(num_bytes == 3){
-			glyph->bytes[0] = glyph->bytes[0] & 0xf;
+			unsigned int temp;
+			temp = 0;
+			a1 = 0; 
+			a2 = 0;
+
+			glyph->bytes[0] = glyph->bytes[0] & 0x0f;
+			temp += glyph->bytes[0];
+			temp = temp << 6;
+
 			glyph->bytes[1] = glyph->bytes[1] & 0x3f;
+			temp += glyph->bytes[1];
+			temp = temp << 6;
+
 			glyph->bytes[2] = glyph->bytes[2] & 0x3f;
+			temp += glyph->bytes[2];
+
+			a1 = (temp & 0xFF00) >> 8;
+			a2 = temp & 0x00FF;
+
+			if(end == BIG){
+				glyph->bytes[0] = a1;
+				glyph->bytes[1] = a2;
+			}
+			else if(end == LITTLE){
+				glyph->bytes[0] = a2;
+				glyph->bytes[1] = a1;
+			}
+
+			glyph->bytes[2] = 0;
+			glyph->bytes[3] = 0;
 		}
+
+
 		else if(num_bytes == 4){
-			glyph->bytes[0] = glyph->bytes[0] & 0x7;
+			long mutli, imm1, imm2;
+			unsigned int t1, t2;
+			mutli = 0;
+			a3 = 0;
+			a4 = 0;
+			t1 = 0;
+			t2 = 0;
+
+			glyph->bytes[0] = glyph->bytes[0] & 0x07;
+			mutli += glyph->bytes[0];
+			mutli = mutli << 6;
+
 			glyph->bytes[1] = glyph->bytes[1] & 0x3f;
+			mutli += glyph->bytes[1]; 
+			mutli = mutli << 6;
+
 			glyph->bytes[2] = glyph->bytes[2] & 0x3f;
+			mutli += glyph->bytes[2];
+			mutli = mutli << 6;
+
 			glyph->bytes[3] = glyph->bytes[3] & 0x3f;
+			mutli += glyph->bytes[3];
+
+			mutli = mutli - 0x10000; /*20 bytes*/
+
+			imm1 = mutli >> 10; /*vh*/
+			imm2 = mutli & 0x3FF; /*vl*/
+
+			t1 = imm1 + 0xD800;
+			t2 = imm2 + 0xDC00;
+
+			a1 = (t1 & 0xFF00) >> 8;
+			a2 = t1 & 0x00FF;
+
+			a4 = (t2 & 0xFF00) >> 8;
+			a3 = t2 & 0x00FF;
+
+			if(end == BIG){
+				glyph->bytes[0] = a1;
+				glyph->bytes[1] = a2;
+				glyph->bytes[2] = a4;
+				glyph->bytes[3] = a3;
+			}
+			else if(end == LITTLE){
+				glyph->bytes[0] = a2;
+				glyph->bytes[1] = a1;
+				glyph->bytes[2] = a3;
+				glyph->bytes[3] = a4;
+			}
+
 		}
 	}
-
-	if(end == BIG)
-		printf("STUFF\n");
-
 	return glyph;
 }

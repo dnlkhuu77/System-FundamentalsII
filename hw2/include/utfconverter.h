@@ -53,12 +53,13 @@ typedef struct Glyph {
 char filename[256];
 char filename2[256];
 
-/** The usage statement. UPDATE THIS!!!!!!!!!!!!!!!!!!!!!! */
-const char* USAGE[4] = { 
-"Usage:  ./utfconverter FILENAME [OPTION]\n\t",
-"./utfconverter -h\t\t\tDisplays this usage statement.\n\t",
-"./utfconverter --help\t\t\tDisplays this usage statement.\n\t",
-"./utfconverter --UTF-16=ENDIANNESS\tEndianness to convert to.\n",
+/** The usage statement.*/
+const char* USAGE[] = { 
+"Usage:  ./utf [-h|--help] -u OUT_ENC | --UTF=OUT_ENC IN_FILE [OUT_FILE]\n",
+"\t-h --help\t\tDisplays this usage statement.\n",
+"\t-v --vv\t\tToggles the verbosity of the program to level 1 or 2.\n\n",
+"\t-u OUT_ENC, --UTF=OUT_ENC\t\tSets the output encoding.\t \n\t\t\t\t\tValid OUT_ENC: 16LE, 16BE\n",
+"\tIN_FILE\t\t The file to convert.\t \t[OUT_FILE] Output file name. If not present, defaults to stdout."
 };
 
 /** Which endianness to convert to. */

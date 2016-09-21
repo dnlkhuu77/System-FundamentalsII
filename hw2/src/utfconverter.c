@@ -5,18 +5,19 @@ int v_counter = 0;
 int num_bytes = 0;
 float ascii_count, ascii_total = 0;
 float surr_count, surr_total = 0;
-int glyph_total = 0; /*We are counting the BOM*/
+int glyph_total = -1; /*We are counting the BOM*/
 static clock_t read_start, read_end, write_start, write_end, convert_start, convert_end = 0;
 static struct tms read_start2, read_end2, convert_start2, convert_end2, write_start2, write_end2;
 
 int main(int argc, char** argv){
 	unsigned char buf[MAX_BYTES];
 	int rv = 0;
-	Glyph* glyph= NULL;
+	Glyph* glyph = NULL;
 
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
-	fd = open(filename, O_RDONLY);
+	if ((fd = open(filename, O_RDONLY)) == 0)
+		return EXIT_FAILURE;
 	if(filename2 != NULL)
 		fd2 = open(filename2, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IROTH | S_IRGRP
 			| S_IWUSR | S_IWGRP | S_IWOTH);
@@ -78,10 +79,6 @@ int main(int argc, char** argv){
 		while((rv = read(fd, &buf[0], 1)) == 1 &&
 				(rv = read(fd, &buf[1], 1)) == 1){
 
-			if(buf[0] < 128 && buf[1] < 128)
-				ascii_count++;
-			ascii_total++;
-
 			glyph = fill_glyph(glyph, buf, source, &fd);
 
 			if(conversion!= LITTLE && source != UTF8)
@@ -96,7 +93,6 @@ int main(int argc, char** argv){
 		while((rv = read(fd, &buf[0], 1)) == 1){
 
 			num_bytes = how_many_bytes(buf);
-			/*printf("How many bytes: %d\n", num_bytes);*/
 
 			if(num_bytes == 1)
 				glyph = fill_glyph(glyph, buf, source, &fd);
@@ -186,6 +182,17 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 	unsigned int bits;
 
 	if(end == LITTLE){
+		if(data[0] < 128 && data[1] == 0)
+			ascii_count++;
+		ascii_total++;
+	}
+	else if(end == BIG){
+		if(data[1] < 128 && data[0] == 0)
+			ascii_count++;
+		ascii_total++;
+	}
+
+	if(end == LITTLE){
 		glyph->bytes[0] = data[0];
 		glyph->bytes[1] = data[1];
 	}
@@ -248,21 +255,18 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 		}
 	}
 
-
 	bits = 0; 
 	bits |= ((data[FIRST] << 8 ) + data[SECOND]);
 	/* Check high surrogate pair using its special value range.*/
 
 	if(bits > 0xD800 && bits < 0xDBFF){ 
-		/*fprintf(stderr, "STUFFFFFFF\n" );*/
+		surr_count++;
 		if(read(*fd, &data[FIRST], 1) == 1 && read(*fd, &data[SECOND], 1) == 1){
 			bits = 0;
 			bits |= ((data[FIRST] << 8) + data[SECOND]);
 
-
 			if(bits > 0xDC00 && bits < 0xDFFF){
 				glyph->surrogate = true; 
-				surr_count++;
 			} else {
 				printf("Invalid\n");
 				print_help();
@@ -271,7 +275,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 
 	}else
 		glyph->surrogate = false;
-	surr_total++;
 
 
 	if(!glyph->surrogate){
@@ -283,7 +286,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 			glyph->bytes[FOURTH] = data[FIRST];
 			glyph_total++;
 			ascii_total++;
-			surr_total++;
 		}
 		else{
 			glyph->bytes[THIRD] = data[FIRST]; 
@@ -293,6 +295,7 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 
 	glyph->end = end;
 	glyph_total++;
+	surr_total++;
 	return glyph;
 }
 
@@ -503,14 +506,23 @@ void verb2(char* filename_sh){
 }
 
 Glyph* convert(Glyph* glyph, endianness end){
+	surr_total++;
+	ascii_total++;
+	glyph_total++;
 	if(num_bytes == 1){
 		if(end == LITTLE){
 			glyph->bytes[0] = glyph->bytes[0];
 			glyph->bytes[1] = 0;
+
+			if(glyph->bytes[0] < 128 && glyph->bytes[1] == 0)
+				ascii_count++;;
+
 		}else if(end == BIG){
 			glyph->bytes[1] = glyph->bytes[0];
-
 			glyph->bytes[0] = 0;
+
+			if(glyph->bytes[1] < 128 && glyph->bytes[0] == 0)
+				ascii_count++;
 		}
 		glyph->bytes[2] = 0;
 		glyph->bytes[3] = 0;
@@ -580,6 +592,9 @@ Glyph* convert(Glyph* glyph, endianness end){
 		else if(num_bytes == 4){
 			long mutli, imm1, imm2;
 			unsigned int t1, t2;
+			ascii_total++;
+			surr_count++;
+			glyph_total++;
 			mutli = 0;
 			a3 = 0;
 			a4 = 0;
@@ -630,5 +645,7 @@ Glyph* convert(Glyph* glyph, endianness end){
 
 		}
 	}
+
+
 	return glyph;
 }

@@ -381,7 +381,7 @@ void parse_args(int argc, char** argv){
 
 void print_help(void) {
 	int j = 0;
-	for(j = 0; j < 4; j++){
+	for(j = 0; j < 5; j++){
 		printf("%s", USAGE[j]); 
 	}
 	quit_converter(fd);
@@ -434,6 +434,7 @@ void verb1(char* filename_sh){
 	uname(&os_name);
 	fprintf(stderr, "Operating System: %s\n", os_name.sysname);
 
+	free(hostname);
 	quit_converter(fd);
 	quit_converter(fd2);
 }
@@ -500,6 +501,7 @@ void verb2(char* filename_sh){
 
 	fprintf(stderr, "Glyphs: %d\n", glyph_total);
 
+	free(hostname);
 	quit_converter(fd);
 	quit_converter(fd2);
 	

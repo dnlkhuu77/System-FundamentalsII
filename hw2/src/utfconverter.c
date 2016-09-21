@@ -46,9 +46,10 @@ int main(int argc, char** argv){
 		} else {
 			/*file has no BOM*/
 			free(glyph); 
-			fprintf(stderr, "File has no BOM.\n");
+			/*fprintf(stderr, "File has no BOM.\n");*/
 			quit_converter(fd);
 			quit_converter(fd2); 
+			print_help();
 			return EXIT_FAILURE;
 		}
 		memset(glyph, 0, sizeof(Glyph));
@@ -99,21 +100,27 @@ int main(int argc, char** argv){
 			else if(num_bytes == 2){
 				if((rv = read(fd, &buf[1], 1)) == 1)
 					glyph = fill_glyph(glyph, buf, source, &fd);
-				else
+				else{
 					print_help();
+					return EXIT_FAILURE;
+				}
 			}
 			else if(num_bytes == 3){
 				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1)
 					glyph = fill_glyph(glyph, buf, source, &fd);
-				else
+				else{
 					print_help();
+					return EXIT_FAILURE;
+				}
 			}
 			else if(num_bytes == 4){
 				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1 && 
 					(rv = read(fd, &buf[3], 1)) == 1)
 					glyph = fill_glyph(glyph, buf, source, &fd);
-				else
+				else{
 					print_help();
+					return EXIT_FAILURE;
+				}
 			}
 
 			glyph = convert(glyph, conversion);

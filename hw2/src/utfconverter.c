@@ -6,6 +6,7 @@ int num_bytes = 0;
 float ascii_count, ascii_total = 0;
 float surr_count, surr_total = 0;
 int glyph_total = 0; /*We are counting the BOM*/
+int help_flag = 0;
 static clock_t read_start, read_end, write_start, write_end, convert_start, convert_end = 0;
 static struct tms read_start2, read_end2, convert_start2, convert_end2, write_start2, write_end2;
 
@@ -16,6 +17,10 @@ int main(int argc, char** argv){
 
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
+
+	if(help_flag == 1)
+		return EXIT_FAILURE;
+	
 	if ((fd = open(filename, O_RDONLY)) == 0)
 		return EXIT_FAILURE;
 	if(filename2 != NULL)
@@ -130,7 +135,6 @@ int main(int argc, char** argv){
 						return EXIT_FAILURE;
 				}
 				else{
-					print_help();
 					return EXIT_FAILURE;
 				}
 			}
@@ -364,7 +368,8 @@ void parse_args(int argc, char** argv){
 				v_counter++;
 				break;
 			default:
-				fprintf(stderr, "Unrecognized argument.\n");
+				/*fprintf(stderr, "Unrecognized argument.\n");*/
+				help_flag = 1;
 				print_help();
 				quit_converter(fd);
 				quit_converter(fd2);
@@ -375,8 +380,9 @@ void parse_args(int argc, char** argv){
 	if(optind < argc){
 			strcpy(filename, argv[optind]);
 	} else {
-		fprintf(stderr, "Filename not given.\n");
+		/*fprintf(stderr, "Filename not given.\n");*/
 		print_help();
+		help_flag = 1;
 	}
 
 	if(argv[optind + 1] != NULL){
@@ -384,8 +390,9 @@ void parse_args(int argc, char** argv){
 	}
 
 	if(endian_convert == NULL){
-		fprintf(stderr, "Converson mode not given.\n");
+		/*fprintf(stderr, "Converson mode not given.\n");*/
 		print_help();
+		help_flag = 1;
 	}
 
 	if(strcmp(endian_convert, "16LE") == 0){
@@ -395,6 +402,8 @@ void parse_args(int argc, char** argv){
 	} else {
 		quit_converter(fd);
 		quit_converter(fd2);
+		print_help();
+		help_flag = 1;
 	}
     
 }

@@ -280,12 +280,13 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 	/* Check high surrogate pair using its special value range.*/
 
 	if(bits > 0xD800 && bits < 0xDBFF){ 
-		surr_count++;
 		if(read(*fd, &data[FIRST], 1) == 1 && read(*fd, &data[SECOND], 1) == 1){
 			bits = 0;
 			bits |= ((data[FIRST] << 8) + data[SECOND]);
 
 			if(bits > 0xDC00 && bits < 0xDFFF){
+				surr_count = surr_count + 2;
+				surr_total++;
 				glyph->surrogate = true; 
 			} else {
 				print_help();
@@ -615,7 +616,8 @@ Glyph* convert(Glyph* glyph, endianness end){
 			long mutli, imm1, imm2;
 			unsigned int t1, t2;
 			ascii_total++;
-			surr_count++;
+			surr_count = surr_count + 2;
+			surr_total++;
 			glyph_total++;
 			mutli = 0;
 			a3 = 0;

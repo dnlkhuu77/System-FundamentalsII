@@ -5,7 +5,7 @@ int v_counter = 0;
 int num_bytes = 0;
 float ascii_count, ascii_total = 0;
 float surr_count, surr_total = 0;
-int glyph_total = -1; /*We are counting the BOM*/
+int glyph_total = 0; /*We are counting the BOM*/
 static clock_t read_start, read_end, write_start, write_end, convert_start, convert_end = 0;
 static struct tms read_start2, read_end2, convert_start2, convert_end2, write_start2, write_end2;
 
@@ -263,7 +263,7 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 	}
 
 	bits = 0; 
-	bits |= ((data[FIRST] << 8 ) + data[SECOND]);
+	bits = ((data[FIRST] << 8 ) + data[SECOND]);
 	/* Check high surrogate pair using its special value range.*/
 
 	if(bits > 0xD800 && bits < 0xDBFF){ 
@@ -275,7 +275,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 			if(bits > 0xDC00 && bits < 0xDFFF){
 				glyph->surrogate = true; 
 			} else {
-				printf("Invalid\n");
 				print_help();
 			}
 		}
@@ -418,7 +417,7 @@ void verb1(char* filename_sh){
 	stat(filename_sh, &file_size);
 	size = file_size.st_size;
 	size_final = (float) size / 1000;
-	fprintf(stderr, "Input file size: %.3f kb. \n", size_final);	
+	fprintf(stderr, "Input file size: %.3f kb \n", size_final);	
 
 	ptr = realpath(filename_sh, file_path);
 	fprintf(stderr, "Input file path: %s\n", ptr);
@@ -460,7 +459,7 @@ void verb2(char* filename_sh){
 	stat(filename_sh, &file_size);
 	size = file_size.st_size;
 	size_final = (float) size / 1000;
-	fprintf(stderr, "Input file size: %.3f kb. \n", size_final);	
+	fprintf(stderr, "Input file size: %.3f kb \n", size_final);	
 
 	ptr = realpath(filename_sh, file_path);
 	fprintf(stderr, "Input file path: %s\n", ptr);

@@ -60,12 +60,15 @@ int main(int argc, char** argv){
 
 	convert_start = clock();
 
-	if(source != UTF8)
-		fill_glyph(glyph, buf, source, &fd);
+	if(source != UTF8){
+		if(fill_glyph(glyph, buf, source, &fd) == NULL)
+			return EXIT_FAILURE;
+	}
 	else if (source == UTF8){
 			buf[0] = 0xff;
 			buf[1] = 0xfe;
-			fill_glyph(glyph, buf, conversion, &fd);
+			if (fill_glyph(glyph, buf, conversion, &fd) == NULL)
+				return EXIT_FAILURE;
 	}
 
 	if(conversion != LITTLE && source != UTF8)
@@ -80,7 +83,8 @@ int main(int argc, char** argv){
 		while((rv = read(fd, &buf[0], 1)) == 1 &&
 				(rv = read(fd, &buf[1], 1)) == 1){
 
-			glyph = fill_glyph(glyph, buf, source, &fd);
+			if (fill_glyph(glyph, buf, source, &fd) == NULL)
+				return EXIT_FAILURE;
 
 			if(conversion!= LITTLE && source != UTF8)
 				glyph = swap_endianness(glyph);
@@ -95,19 +99,25 @@ int main(int argc, char** argv){
 
 			num_bytes = how_many_bytes(buf);
 
-			if(num_bytes == 1)
-				glyph = fill_glyph(glyph, buf, source, &fd);
+			if(num_bytes == 1){
+				if (fill_glyph(glyph, buf, source, &fd) == NULL)
+					return EXIT_FAILURE;
+			}
 			else if(num_bytes == 2){
-				if((rv = read(fd, &buf[1], 1)) == 1)
-					glyph = fill_glyph(glyph, buf, source, &fd);
+				if((rv = read(fd, &buf[1], 1)) == 1){
+					if (fill_glyph(glyph, buf, source, &fd) == NULL)
+						return EXIT_FAILURE;
+				}
 				else{
 					print_help();
 					return EXIT_FAILURE;
 				}
 			}
 			else if(num_bytes == 3){
-				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1)
-					glyph = fill_glyph(glyph, buf, source, &fd);
+				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1){
+					if (fill_glyph(glyph, buf, source, &fd) == NULL)
+						return EXIT_FAILURE;
+				}
 				else{
 					print_help();
 					return EXIT_FAILURE;
@@ -115,8 +125,10 @@ int main(int argc, char** argv){
 			}
 			else if(num_bytes == 4){
 				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1 && 
-					(rv = read(fd, &buf[3], 1)) == 1)
-					glyph = fill_glyph(glyph, buf, source, &fd);
+					(rv = read(fd, &buf[3], 1)) == 1){
+					if (fill_glyph(glyph, buf, source, &fd) == NULL)
+						return EXIT_FAILURE;
+				}
 				else{
 					print_help();
 					return EXIT_FAILURE;
@@ -258,6 +270,7 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 			}
 			else{
 				print_help(); 
+				return NULL;
 			}
 		}
 	}
@@ -276,6 +289,7 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 				glyph->surrogate = true; 
 			} else {
 				print_help();
+				return NULL;
 			}
 		}
 
@@ -459,7 +473,7 @@ void verb2(char* filename_sh){
 	stat(filename_sh, &file_size);
 	size = file_size.st_size;
 	size_final = (float) size / 1000;
-	fprintf(stderr, "Input file size: %.3f kb \n", size_final);	
+	fprintf(stderr, "Input file size: %.3f kb \n", size_final);
 
 	ptr = realpath(filename_sh, file_path);
 	fprintf(stderr, "Input file path: %s\n", ptr);

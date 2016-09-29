@@ -1,3 +1,6 @@
+Name: Daniel Khuu
+ID: 109372156
+
 # Homework 3 - Memory Allocator
 ## Tested with criterion libraries
 

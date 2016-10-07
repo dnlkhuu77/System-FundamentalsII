@@ -75,14 +75,15 @@ void *sf_malloc(size_t size){
 
 		//go the the footer
 		s2 = (sf_footer*)((char*) (bp + asize + padd + 8));
-		printf("%d\n", ((int) asize+padd-8));
 		s2->alloc = 0x1;
 		s2->block_size = stuff >> 4;
-
-		//freelist_head = s1++;
 		
 		bp = (void*) bp + 8; //move to the payload
 		sf_varprint(bp);
+
+		//edit the free block
+		freelist_head = (sf_free_header*)((char*) (bp + asize + padd + 8 + 16));
+
   		return bp;
  //	}
 
@@ -90,20 +91,6 @@ void *sf_malloc(size_t size){
  //	counter++;
 }
 
-/*
-//find the biggest block of memory that will fit the allocated block
-//alter the header file by adding a header
-static void *find_fit(size_t asize){ //pg 856
-	void* bp;
-
-	for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)){
-		if(!GET_ALLOC(HRDP(bp)) && (asize <= GET_SIZE(HRDP(bp)))){
-			return bp;
-		}
-	}
-	return NULL;
-}
-*/
 void sf_free(void *ptr){
 
 }

@@ -15,9 +15,14 @@ sf_free_header* freelist_head = NULL;
 
 
 void *sf_malloc(size_t size){ //size is int, double (you need to add header+footer+padding)
-	printf("Size of whatever is: %d\n", size); //first test should be int
-	size_t asize; 
+	printf("__________________Size: %zu\n", size); //first test should be int
+	size_t asize;
 	char *bp;
+	sf_header* s1;
+	int padd = 0;
+	int test_pad = size;
+	char* justin = NULL;
+	sf_free_header* s = NULL;
 
 	if(size == 0)
 		return NULL;
@@ -26,12 +31,18 @@ void *sf_malloc(size_t size){ //size is int, double (you need to add header+foot
 		freelist_head = (sf_free_header*) sf_sbrk(1); //request more memory
 		freelist_head->next = NULL;
 		freelist_head->prev = NULL;
+
+		justin = (char*) freelist_head;
+		justin = justin + 4096 - 8; //go to the footer
+		s = (sf_free_header*) justin;
+		s->next = NULL;
+		s->prev = NULL;
 		counter++;
 	}
 
 	if(counter == 4){
-		//set errno to ENOMEM
-		return NULL;
+		errno = ENOMEM;
+		return (void*) -1;
 	}
 
 	if(size <= 8) //adjust the block size to include overhead and alignment reqs.
@@ -39,32 +50,40 @@ void *sf_malloc(size_t size){ //size is int, double (you need to add header+foot
 	else
 		asize = 8 * ((size + 8 + 7) / 8);
 
-	if((bp = find_fit(asize)) != NULL){ //find a free block with asize size
-
-		sf_header s1 = (sf_header*) bp; //set the header of the free list to allocated
+	//if((bp = find_fit(asize)) != NULL){ //find a free block with asize size
+		bp = (char*) freelist_head;
+		s1 = (sf_header*) bp; //set the header of the free list to allocated
 		s1->alloc = 0x1;
-		s1->block_size = size;
-		s1->padding_size = 64 - size - 16;
+		s1->block_size = asize >> 4;
+
+		while(test_pad % 16 != 0){
+			test_pad++;
+			padd++;
+		}
+
+		s1->padding_size = padd;
 
 		//go the the footer
-		s1 = s1 + asize - 1;
+		s1 = (void*) (s1 + asize - 8);
+		s1 = (sf_header*) s1;
 		s1->alloc = 0x1;
-		s1->block_size = size;
-		s1->padding_size = 64 - size - 16;
+		s1->block_size = asize;
+		s1->padding_size = padd;
 
-		freelist_head = s1 + 1;
-	
+		//freelist_head = s1++;
+		
+		bp = (void*) bp + 8; //move to the payload
+		sf_varprint(bp);
   		return s1;
- 	}
+ //	}
 
- 	sf_sbrk(1);
- 	counter++;
-
- 	if(counter == 4)
- 		return NULL;
+ //	sf_sbrk(1);
+ //	counter++;
 }
 
+/*
 //find the biggest block of memory that will fit the allocated block
+//alter the header file by adding a header
 static void *find_fit(size_t asize){ //pg 856
 	void* bp;
 
@@ -75,7 +94,7 @@ static void *find_fit(size_t asize){ //pg 856
 	}
 	return NULL;
 }
-
+*/
 void sf_free(void *ptr){
 
 }

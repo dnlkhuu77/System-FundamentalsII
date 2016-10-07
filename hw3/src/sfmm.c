@@ -23,21 +23,31 @@ void *sf_malloc(size_t size){
 	int padd = 0;
 	int test_pad = size;
 	char* justin = NULL;
-	sf_free_header* s = NULL;
 
 	if(size == 0)
 		return NULL;
 
 	if(freelist_head == NULL){ //at the very start
 		freelist_head = (sf_free_header*) sf_sbrk(1); //request more memory
+
+		s1 = (sf_header*) freelist_head;
+		s1->alloc = 0x0;
+		s1->block_size = 4096;
+		s1->padding_size = 0;
+
+		freelist_head->header = *s1;
 		freelist_head->next = NULL;
 		freelist_head->prev = NULL;
-
+		
 		justin = (char*) freelist_head;
 		justin = justin + 4096 - 8; //go to the footer
-		s = (sf_free_header*) justin;
-		s->next = NULL;
-		s->prev = NULL;
+
+		s2 = (sf_footer*) justin;
+		s2->alloc = 0x0;
+		s2->block_size = 4096;
+
+		//freelist_head is unaffected while we set the freelist_head to one big free block
+		
 		counter++;
 	}
 
@@ -45,12 +55,7 @@ void *sf_malloc(size_t size){
 		errno = ENOMEM;
 		return (void*) -1;
 	}
-	/*
-	if(size <= 8) //adjust the block size to include overhead and alignment reqs.
-		asize = 2 * 8; //8 is dsize (double word size 8 bytes)
-	else
-		asize = 8 * ((size + 8 + 7) / 8);
-		*/
+
 	asize = size;
 
 	//if((bp = find_fit(asize)) != NULL){ //find a free block with asize size
@@ -68,9 +73,7 @@ void *sf_malloc(size_t size){
 		stuff = 16 + padd + asize;
 		s1->block_size = stuff >> 4;
 
-		//go the the foote
-		printf("Size: %zu\n", asize);
-		printf("Padding: %d\n", padd);
+		//go the the footer
 		s2 = (sf_footer*)((char*) (bp + asize + padd + 8));
 		printf("%d\n", ((int) asize+padd-8));
 		s2->alloc = 0x1;
@@ -80,7 +83,7 @@ void *sf_malloc(size_t size){
 		
 		bp = (void*) bp + 8; //move to the payload
 		sf_varprint(bp);
-  		return s1;
+  		return bp;
  //	}
 
  //	sf_sbrk(1);

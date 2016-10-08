@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "sfmm.h"
+#include "sfmm2.h"
 
 int counter = 0;
 
@@ -82,8 +83,8 @@ void *sf_malloc(size_t size){
 		sf_varprint(bp);
 
 		//edit the free block
-		freelist_head = (sf_free_header*)((char*) (bp + asize + padd + 8 + 16));
-
+		freelist_head = (sf_free_header*)((char*) (bp + asize + padd + 8));
+		//the size of the free block left
   		return bp;
  //	}
 
@@ -92,6 +93,20 @@ void *sf_malloc(size_t size){
 }
 
 void sf_free(void *ptr){
+	sf_header* s1;
+	sf_footer* s2;
+	void* cal_ptr;
+	int size;
+
+	cal_ptr = ptr - 8; //go to the header from the payload
+	s1 = (sf_header*) cal_ptr; //get the header out of the block
+	size = s1->block_size << 4;
+	
+	s1->alloc = 0x0;
+
+	s2 = (sf_footer*)((char*) (ptr + size - 16)); //ptr is at payload
+	s2->alloc = 0x0;
+	freelist_head = ptr;
 
 }
 

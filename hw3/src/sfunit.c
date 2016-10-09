@@ -65,3 +65,13 @@ Test(sf_memsuite, Coalesce_no_coalescing, .init = sf_mem_init, .fini = sf_mem_fi
 // DO NOT DELETE THESE COMMENTS
 //############################################
 */
+
+Test(sf_memsuite, Coalesce_CASE2, .init = sf_mem_init, .fini = sf_mem_fini){
+    int *x = sf_malloc(sizeof(int));
+    double *y = sf_malloc(sizeof(double));
+    //int *z = sf_malloc(sizeof(int));
+
+    sf_free(x); //match case 1
+    sf_free(y);
+
+}

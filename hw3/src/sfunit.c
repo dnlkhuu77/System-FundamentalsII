@@ -47,16 +47,15 @@ Test(sf_memsuite, Coalesce_no_coalescing, .init = sf_mem_init, .fini = sf_mem_fi
     memset(y, 0xFF, 4);
     sf_free(x);
     cr_assert(freelist_head == (void*)x-8);
-    sf_free_header *headofx = (sf_free_header*) x-8;
-    sf_footer *footofx = (sf_footer*) (x + headofx->header.block_size) - 8;
-
+    sf_free_header *headofx = (sf_free_header*)((char*)x-8);
+    sf_footer *footofx = (sf_footer*) ((char*)((char*)headofx + (headofx->header.block_size<<4)) - 8);
     // All of the below should be true if there was no coalescing
     cr_assert(headofx->header.alloc == 0);
-    cr_assert(headofx->header.block_size == 32);
-    cr_assert(headofx->header.padding_size == 15);
+    cr_assert(headofx->header.block_size<<4 == 32);
+    cr_assert(headofx->header.padding_size == 12);
 
     cr_assert(footofx->alloc == 0);
-    cr_assert(footofx->block_size == 32);
+    cr_assert(footofx->block_size<<4 == 32);
 }
 
 /*
@@ -66,12 +65,28 @@ Test(sf_memsuite, Coalesce_no_coalescing, .init = sf_mem_init, .fini = sf_mem_fi
 //############################################
 */
 
+/*
 Test(sf_memsuite, Coalesce_CASE2, .init = sf_mem_init, .fini = sf_mem_fini){
+    int *w = sf_malloc(sizeof(int));
     int *x = sf_malloc(sizeof(int));
-    double *y = sf_malloc(sizeof(double));
-    //int *z = sf_malloc(sizeof(int));
+    int *y = sf_malloc(sizeof(int));
+    int *z = sf_malloc(sizeof(int));
 
-    sf_free(x); //match case 1
+    memset(w, 0xFF, sizeof(int));
+    memset(z, 0xFF, sizeof(int));
     sf_free(y);
+    sf_free(x);
 
-}
+    cr_assert(freelist_head == (void*) x - 8);
+    sf_free_header *headofx = (sf_free_header*) x - 8;
+    sf_footer* footofx = (sf_footer*) (x + headofx->header.block_size) - 8;
+
+    // All of the below should be true if there was no coalescing
+    cr_assert(headofx->header.alloc == 0);
+    cr_assert(headofx->header.block_size == 64);
+    cr_assert(headofx->header.padding_size == 14);
+
+    cr_assert(footofx->alloc == 0);
+    cr_assert(footofx->block_size == 32);
+
+}*/

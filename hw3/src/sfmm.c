@@ -19,13 +19,13 @@ sf_footer* freelist_foot = NULL;
 
 void *sf_malloc(size_t size){
 	//IF THERE IS LESS THAN 32 BYTES OF BLOCK LEFT, USE ALL THE FREE SPACE!!!!!!!!!!
-	int stuff = 0;
+	uint64_t stuff = 0;
 	size_t asize;
 	char *bp;
 	sf_header* s1;
 	sf_footer* s2;
-	int padd = 0;
-	int test_pad = size;
+	uint64_t padd = 0;
+	uint64_t test_pad = size;
 	char* justin = NULL;
 
 	if(size == 0 || size > (4096 * 4)){
@@ -118,6 +118,7 @@ void coalesce(void* ptr){
 		printf("CASE 1\n");
 		//[M*][M][F]
 		cal_ptr->header.alloc = 0x0;
+		//cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		sf_free_header* temp = freelist_head;
@@ -137,6 +138,7 @@ void coalesce(void* ptr){
 		//[F][M*][M]
 		printf("CASE 2\n");
 		cal_ptr->header.alloc = 0x0;
+		//cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		cal_ptr = ((void*) cal_ptr) - 8;
@@ -163,6 +165,7 @@ void coalesce(void* ptr){
 		//[M][M*][F]
 		printf("CASE 3\n");
 		cal_ptr->header.alloc = 0x0;
+		//cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		sf_free_header* head_check = (void*) foot;
@@ -187,6 +190,7 @@ void coalesce(void* ptr){
 		//[F][M*][F]
 		printf("CASE 4\n");
 		cal_ptr->header.alloc = 0x0;
+		//cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		sf_free_header* head_check = cal_ptr;
@@ -222,6 +226,7 @@ void coalesce(void* ptr){
 		//[M][M*][M]
 		printf("CASE 5\n");
 		cal_ptr->header.alloc = 0x0;
+		//cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		sf_free_header* temp = freelist_head;

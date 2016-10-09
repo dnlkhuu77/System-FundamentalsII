@@ -13,9 +13,12 @@ int counter = 0;
  */
 
 sf_free_header* freelist_head = NULL;
+sf_free_header* top_ptr = NULL;
+sf_footer* freelist_foot = NULL;
 
 
 void *sf_malloc(size_t size){
+	//IF THERE IS LESS THAN 32 BYTES OF BLOCK LEFT, USE ALL THE FREE SPACE!!!!!!!!!!
 	int stuff = 0;
 	size_t asize;
 	char *bp;
@@ -25,11 +28,13 @@ void *sf_malloc(size_t size){
 	int test_pad = size;
 	char* justin = NULL;
 
-	if(size == 0)
+	if(size == 0 || size > (4096 * 4)){
 		return NULL;
+	}
 
 	if(freelist_head == NULL){ //at the very start
 		freelist_head = (sf_free_header*) sf_sbrk(1); //request more memory
+		top_ptr = freelist_head;
 
 		s1 = (sf_header*) freelist_head;
 		s1->alloc = 0x0;
@@ -92,22 +97,137 @@ void *sf_malloc(size_t size){
  //	counter++;
 }
 
-void sf_free(void *ptr){
-	sf_header* s1;
-	sf_footer* s2;
-	void* cal_ptr;
-	int size;
+void sf_free(void *ptr){ 
+	ptr = ptr - 8; //go to the header
+	coalesce(ptr);
 
-	cal_ptr = ptr - 8; //go to the header from the payload
-	s1 = (sf_header*) cal_ptr; //get the header out of the block
-	size = s1->block_size << 4;
-	
-	s1->alloc = 0x0;
+}
 
-	s2 = (sf_footer*)((char*) (ptr + size - 16)); //ptr is at payload
-	s2->alloc = 0x0;
-	freelist_head = ptr;
+void coalesce(void* ptr){
+	//return an error if you try to free null, middle of allication block, 
+	sf_free_header* cal_ptr = (sf_free_header*) ptr;
+	uint64_t size = cal_ptr->header.block_size;
+	size = size << 4;
+	sf_footer* foot_check = ((void*) cal_ptr) + (size) - 8;
 
+	if(((sf_footer*)(((void*) foot_check) + 8))->alloc == 1 && ((sf_header*)(((void*)cal_ptr)-8)) < (sf_header*) top_ptr){
+		//
+		cal_ptr->header.alloc = 0x0;
+		foot_check->alloc = 0x0;
+
+		sf_free_header* temp = freelist_head;
+		freelist_head = cal_ptr;
+		cal_ptr->next = temp;
+		temp->prev = cal_ptr;
+		freelist_foot = foot_check;
+
+		while(freelist_head != NULL){
+			printf("CASE 1\n");
+			sf_blockprint(freelist_head);
+			freelist_head = freelist_head->next;
+		}
+	}
+	else if(((sf_footer*)(((void*) foot_check) + 8))-> alloc == 1 && ((sf_header*)(((void*)cal_ptr)-8))->alloc ==0){
+		cal_ptr->header.alloc = 0x0;
+		foot_check->alloc = 0x0;
+
+		cal_ptr = ((void*) cal_ptr) - 8;
+		uint64_t b_move = (cal_ptr->header.block_size) << 4;
+		cal_ptr = ((void*) cal_ptr) - (b_move - 8);
+
+		cal_ptr->header.alloc = 0x0;
+		cal_ptr->header.block_size = (b_move + size) >> 4;
+
+		foot_check->alloc = 0x0;
+		foot_check->block_size = (b_move + size) >> 4;
+
+		freelist_head = cal_ptr;
+		freelist_foot = foot_check;
+
+		while(freelist_head != NULL){
+			printf("CASE 2\n");
+			sf_blockprint(freelist_head);
+			freelist_head = freelist_head->next;
+		}
+	}
+	else if(((sf_footer*)(((void*) foot_check) + 8))->alloc == 0 && ((sf_header*)(((void*) cal_ptr) - 8))->alloc == 1){
+		cal_ptr->header.alloc = 0x0;
+		foot_check->alloc = 0x0;
+
+		sf_free_header* head_check = (void*) foot_check;
+		head_check = ((void*) head_check) + 8;
+		printf("Location of head_check pointer: %p\n", head_check);
+		printf("Size of block header: %d\n", cal_ptr->header.block_size << 4);
+		printf("Location of footer pointer + 8: %p\n", ((void*) foot_check) + 8);
+
+		foot_check = ((void*) foot_check) + (head_check->header.block_size << 4);
+		printf("Location of new footer: %p\n", foot_check);
+		foot_check->block_size = ((head_check->header.block_size << 4) + (cal_ptr->header.block_size << 4)) >> 4;
+		printf("Size of block footer: %d\n", foot_check->block_size << 4);
+
+		cal_ptr->header.block_size = foot_check->block_size;
+		printf("Size of block header: %d\n", cal_ptr->header.block_size << 4);
+		freelist_head = ((void*) cal_ptr);
+		printf("Location of new header: %p\n", freelist_head);
+		freelist_head->next = head_check->next;
+		freelist_foot = foot_check;
+
+		while(freelist_head != NULL){
+			printf("CASE 3\n");
+			sf_blockprint(freelist_head);
+			freelist_head = freelist_head->next;
+		}
+	}
+	else if(((sf_footer*)(((void*) foot_check) + 8))->alloc == 0 && ((sf_header*)(((void*)cal_ptr) - 8))->alloc == 0){
+		cal_ptr->header.alloc = 0x0;
+		foot_check->alloc = 0x0;
+
+		sf_free_header* head_check = cal_ptr;
+		uint64_t b_move = (cal_ptr->header.block_size) << 4;
+		head_check = (void*) head_check + b_move;
+		printf("Location of head check pointer: %p\n", head_check);
+		printf("Location of freelist_foot + 8 %p\n", ((void*) foot_check) + 8);
+
+		cal_ptr = ((void*) cal_ptr) - 8;
+		uint64_t b_moveheader = (cal_ptr->header.block_size) << 4;
+		cal_ptr = ((void*) cal_ptr) - (b_moveheader - 8);
+
+		foot_check = ((void*) foot_check) + 8;
+		uint64_t b_movefooter = (foot_check->block_size) << 4;
+		foot_check = ((void*) foot_check) + (b_movefooter - 8);
+
+		cal_ptr->header.alloc = 0x0;
+		cal_ptr->header.block_size = (b_movefooter + b_moveheader + size) >> 4;
+
+		foot_check->alloc = 0x0;
+		foot_check->block_size = (b_movefooter + b_moveheader + size) >> 4;
+
+		freelist_head = cal_ptr;
+		freelist_head->next = head_check->next;
+		freelist_foot = foot_check;
+
+		while(freelist_head != NULL){
+			printf("CASE 4\n");
+			sf_blockprint(freelist_head);
+			freelist_head = freelist_head->next;
+		}
+	}
+	else if(((sf_footer*)(((void*)foot_check)+8))->alloc == 1 && ((sf_header*)(((void*)cal_ptr) -8))->alloc == 1){
+		cal_ptr->header.alloc = 0x0;
+		foot_check->alloc = 0x0;
+
+		sf_free_header* temp = freelist_head;
+		freelist_head = cal_ptr;
+		cal_ptr->next = temp;
+		temp->prev = cal_ptr;
+		freelist_foot = foot_check;
+
+		while(freelist_head != NULL){
+			printf("CASE 5\n");
+			sf_blockprint(freelist_head);
+			freelist_head = freelist_head->next;
+		}
+	}
 }
 
 void *sf_realloc(void *ptr, size_t size){

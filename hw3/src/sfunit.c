@@ -65,8 +65,8 @@ Test(sf_memsuite, Coalesce_no_coalescing, .init = sf_mem_init, .fini = sf_mem_fi
 //############################################
 */
 
-/*
-Test(sf_memsuite, Coalesce_CASE2, .init = sf_mem_init, .fini = sf_mem_fini){
+
+Test(sf_memsuite, Coalesce_INC, .init = sf_mem_init, .fini = sf_mem_fini){
     int *w = sf_malloc(sizeof(int));
     int *x = sf_malloc(sizeof(int));
     int *y = sf_malloc(sizeof(int));
@@ -83,10 +83,10 @@ Test(sf_memsuite, Coalesce_CASE2, .init = sf_mem_init, .fini = sf_mem_fini){
 
     // All of the below should be true if there was no coalescing
     cr_assert(headofx->header.alloc == 0);
-    cr_assert(headofx->header.block_size == 64);
-    cr_assert(headofx->header.padding_size == 14);
+    cr_assert(headofx->header.block_size<<4 == 32);
+    cr_assert(headofx->header.padding_size == 12);
 
     cr_assert(footofx->alloc == 0);
     cr_assert(footofx->block_size == 32);
 
-}*/
+}

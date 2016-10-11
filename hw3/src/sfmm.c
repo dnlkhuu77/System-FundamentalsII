@@ -190,9 +190,10 @@ void sf_free(void *ptr){
 	if(ptr == NULL){
 		printf("TEST ERROR: FREEING A NULL\n");
 	}
-
-	ptr = ptr - 8; //go to the header
-	coalesce(ptr);
+	else{
+		ptr = ptr - 8; //go to the header
+		coalesce(ptr);
+	}
 
 }
 
@@ -215,13 +216,6 @@ void coalesce(void* ptr){
 		cal_ptr->next = temp;
 		temp->prev = cal_ptr;
 		freelist_foot = foot;
-		/*
-		while(freelist_head != NULL){
-			printf("CASE 1\n");
-			sf_blockprint(freelist_head);
-			freelist_head = freelist_head->next;
-		}
-		*/
 	}
 	else if(((sf_header*)(((void*)cal_ptr)-8))->alloc ==0 && ((sf_footer*)(((void*) foot) + 8))-> alloc == 1){
 		//[F][M*][M]
@@ -242,13 +236,6 @@ void coalesce(void* ptr){
 
 		freelist_head = cal_ptr;
 		freelist_foot = foot;
-
-		/*
-		while(freelist_head != NULL){
-			printf("CASE 2\n");
-			sf_blockprint(freelist_head);
-			freelist_head = freelist_head->next;
-		}*/
 	}
 	else if(((sf_header*)(((void*) cal_ptr) - 8))->alloc == 1 && ((sf_footer*)(((void*) foot) + 8))->alloc == 0){
 		//[M][M*][F]
@@ -266,14 +253,6 @@ void coalesce(void* ptr){
 		freelist_head = ((void*) cal_ptr);
 		freelist_head->next = head_check->next;
 		freelist_foot = foot;
-		printf("CASE 3 CASE: %d\n", cal_ptr->header.block_size);
-
-		/*
-		while(freelist_head != NULL){
-			printf("CASE 3\n");
-			sf_blockprint(freelist_head);
-			freelist_head = freelist_head->next;
-		}*/
 	}
 	else if(((sf_header*)(((void*)cal_ptr) - 8))->alloc == 0 && ((sf_footer*)(((void*) foot) + 8))->alloc == 0){
 		//[F][M*][F]
@@ -303,13 +282,6 @@ void coalesce(void* ptr){
 		freelist_head = cal_ptr;
 		freelist_head->next = head_check->next;
 		freelist_foot = foot;
-
-		/*
-		while(freelist_head != NULL){
-			printf("CASE 4\n");
-			sf_blockprint(freelist_head);
-			freelist_head = freelist_head->next;
-		}*/
 	}
 	else if(((sf_header*)(((void*)cal_ptr) -8))->alloc == 1 && ((sf_footer*)(((void*)foot)+8))->alloc == 1){
 		//[M][M*][M]
@@ -323,20 +295,18 @@ void coalesce(void* ptr){
 		cal_ptr->next = temp;
 		temp->prev = cal_ptr;
 		freelist_foot = foot;
-
-		/*
-		while(freelist_head != NULL){
-			printf("CASE 5\n");
-			sf_blockprint(freelist_head);
-			freelist_head = freelist_head->next;
-		}*/
 	}
 	else if((((sf_header*)(((void*)cal_ptr) -8))->alloc == 0 && ((sf_footer*)(((void*)foot)+8))->alloc == 0)){
-		//merge [F][*F]
-		sf_free_header* temp = freelist_head;
-		freelist_head = cal_ptr;
-		cal_ptr->next = temp;
-		temp->prev = cal_ptr;
+		//merge [F][*F] (like case 3)
+		
+		sf_free_header* head_check = (void*) foot;
+		head_check = ((void*) head_check) + 8;
+
+		foot = ((void*) foot) + (head_check->header.block_size << 4);
+		foot->block_size = ((head_check->header.block_size << 4) + (cal_ptr->header.block_size << 4)) >> 4;
+		cal_ptr->header.block_size = foot->block_size;
+		freelist_head = ((void*) cal_ptr);
+		freelist_head->next = head_check->next;
 		freelist_foot = foot;
 	}
 }

@@ -103,13 +103,18 @@ void *sf_malloc(size_t size){
 
 	asize = size;
 	int cap = 0;
+	int flag = 0;
 	sf_free_header* find_space = freelist_head;
+
+	if(find_space->next == NULL)
+		flag = 1;
 
 	//find the first-fit space
 	while(find_space->next != NULL){
 		cap = (find_space->header.block_size) << 4;
 
 		if(find_space->header.alloc == 0 && (asize+16) <= cap){
+			flag = 1;
 			break;
 		}
 
@@ -128,6 +133,7 @@ void *sf_malloc(size_t size){
 	}
 
 	 //find a free block with asize size
+	if(flag != 0){
 		uint64_t padd = 0;
 		uint64_t test_pad = size;
 		uint64_t stuff = 0;
@@ -155,27 +161,29 @@ void *sf_malloc(size_t size){
 		
 		bp = (void*) bp + 8; //move to the payload
 
+		//don't move header block unless it's the block that's malloc
+		//printf("SIZEBEFORE : %d\n", (freelist_foot->block_size) << 4);
+		if(freelist_head->header.alloc == 1)
+			freelist_head = (sf_free_header*)((void*) freelist_head + stuff);
+
 		//reduce the size of the freelist (SIZE OF FREELIST WILL CHANGE)
-		printf("SIZEBEFORE : %d\n", (freelist_foot->block_size) << 4);
-		freelist_head = (sf_free_header*)((void*) freelist_head + stuff);
 		freelist_head->header.block_size = ((freelist_foot->block_size << 4) -stuff) >> 4;
 		freelist_foot->block_size = ((freelist_foot->block_size << 4) -stuff) >> 4;
-		printf("SIZEAFTER : %d\n", (freelist_foot->block_size) << 4);
-
+		//printf("SIZEAFTER : %d\n", (freelist_foot->block_size) << 4);
 		
 		while(freelist_head->header.alloc == 1){
-			printf("SIZEBEFORE : %d\n", (freelist_foot->block_size) << 4);
+			//printf("SIZEBEFORE_WHILE : %d\n", (freelist_foot->block_size) << 4);
 			freelist_head = (sf_free_header*)((void*) freelist_head + stuff);
 			freelist_head->header.block_size = ((freelist_foot->block_size << 4) -stuff) >> 4;
 			freelist_foot->block_size = ((freelist_foot->block_size << 4) -stuff) >> 4;
-			printf("SIZEAFTER : %d\n", (freelist_foot->block_size) << 4);
+			//printf("SIZEAFTER_WHILE : %d\n", (freelist_foot->block_size) << 4);
 		}
 
   		return bp;
- 	
+ 	}
 
  	//if you need more memory sbrk
- 	//return NULL;
+ 	return (void*) -1;
 }
 
 void sf_free(void *ptr){ 
@@ -254,11 +262,11 @@ void coalesce(void* ptr){
 
 		foot = ((void*) foot) + (head_check->header.block_size << 4);
 		foot->block_size = ((head_check->header.block_size << 4) + (cal_ptr->header.block_size << 4)) >> 4;
-
 		cal_ptr->header.block_size = foot->block_size;
 		freelist_head = ((void*) cal_ptr);
 		freelist_head->next = head_check->next;
 		freelist_foot = foot;
+		printf("CASE 3 CASE: %d\n", cal_ptr->header.block_size);
 
 		/*
 		while(freelist_head != NULL){

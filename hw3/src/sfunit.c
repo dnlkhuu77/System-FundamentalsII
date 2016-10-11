@@ -67,7 +67,6 @@ Test(sf_memsuite, Coalesce_no_coalescing, .init = sf_mem_init, .fini = sf_mem_fi
 
 
 Test(sf_memsuite, Mutliple_Malloc, .init = sf_mem_init, .fini = sf_mem_fini){
-    printf("TEST 7\n" );
     int *w = sf_malloc(sizeof(int));
     int *x = sf_malloc(sizeof(int));
     long *y = sf_malloc(sizeof(long));
@@ -80,9 +79,7 @@ Test(sf_memsuite, Mutliple_Malloc, .init = sf_mem_init, .fini = sf_mem_fini){
 
     cr_assert(freelist_head == (void*) x - 8);
     sf_free_header *headofx = (sf_free_header*)((char*)x-8);
-    printf("CURRENTB: %d\n", headofx->header.block_size << 4);
     sf_footer *footofx = (sf_footer*) ((char*)((char*)headofx + (headofx->header.block_size<<4)) - 8);
-    printf("CURRENT: %d\n", headofx->header.block_size << 4);
 
     // All of the below should be true if there was no coalescing
     cr_assert(headofx->header.alloc == 0);
@@ -91,5 +88,30 @@ Test(sf_memsuite, Mutliple_Malloc, .init = sf_mem_init, .fini = sf_mem_fini){
 
     cr_assert(footofx->alloc == 0);
     cr_assert(footofx->block_size << 4 == 32);
+
+}
+
+Test(sf_memsuite, Mutliple_COL, .init = sf_mem_init, .fini = sf_mem_fini){
+    int *w = sf_malloc(sizeof(int));
+    int *x = sf_malloc(sizeof(int));
+    int *y = sf_malloc(sizeof(int));
+    long *z = sf_malloc(sizeof(long));
+
+    memset(w, 0xFF, sizeof(int));
+    memset(z, 0xFF, sizeof(long));
+    sf_free(y);
+    sf_free(x);
+
+    cr_assert(freelist_head == (void*) x - 8);
+    sf_free_header *headofx = (sf_free_header*)((char*)x-8);
+    sf_footer *footofx = (sf_footer*) ((char*)((char*)headofx + (headofx->header.block_size<<4)) - 8);
+
+    // All of the below should be true if there was no coalescing
+    cr_assert(headofx->header.alloc == 0);
+    cr_assert(headofx->header.block_size<<4 == 64);
+    cr_assert(headofx->header.padding_size == 12);
+
+    cr_assert(footofx->alloc == 0);
+    cr_assert(footofx->block_size << 4 == 64);
 
 }

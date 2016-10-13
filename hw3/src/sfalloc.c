@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     //info("Initialized heap with %dmb of heap space.\n", MAX_HEAP_SIZE >> 20);
     //press_to_cont();
 
-/*
+
     printf("==CUSTOM TEST CASE==\n");
     int *x = sf_malloc(sizeof(int)); //will be freed
     int *y = sf_malloc(sizeof(int));
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     int *b = sf_malloc(sizeof(double));
     printf("Just to double: %p\n", b);
     press_to_cont();
-*/
+
     // Print out title for first test
     printf("=== Test1: Allocation test ===\n");
     // Test #1: Allocate an integer

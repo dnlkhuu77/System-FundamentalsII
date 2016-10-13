@@ -88,7 +88,6 @@ Test(sf_memsuite, Mutliple_Malloc, .init = sf_mem_init, .fini = sf_mem_fini){
 
     cr_assert(footofx->alloc == 0);
     cr_assert(footofx->block_size << 4 == 32);
-
 }
 
 Test(sf_memsuite, Mutliple_COL, .init = sf_mem_init, .fini = sf_mem_fini){
@@ -106,12 +105,36 @@ Test(sf_memsuite, Mutliple_COL, .init = sf_mem_init, .fini = sf_mem_fini){
     sf_free_header *headofx = (sf_free_header*)((char*)x-8);
     sf_footer *footofx = (sf_footer*) ((char*)((char*)headofx + (headofx->header.block_size<<4)) - 8);
 
-    // All of the below should be true if there was no coalescing
     cr_assert(headofx->header.alloc == 0);
     cr_assert(headofx->header.block_size<<4 == 64);
     cr_assert(headofx->header.padding_size == 12);
 
     cr_assert(footofx->alloc == 0);
     cr_assert(footofx->block_size << 4 == 64);
+}
 
+Test(sf_memsuite, MIXED_M_F, .init = sf_mem_init, .fini = sf_mem_fini){
+    printf("TEST 3\n");
+    int *x = sf_malloc(sizeof(int)); //will be freed
+    int *y = sf_malloc(sizeof(int));
+    sf_free(x);
+    int *z = sf_malloc(sizeof(int)); //replace x
+
+    memset(y, 0xFF, sizeof(int));
+
+    sf_free_header *headofz = (sf_free_header*)((char*)z-8);
+    sf_footer *footofz = (sf_footer*) ((char*)((char*)headofz + (headofz->header.block_size<<4)) - 8);
+
+    printf("ADDRESS OF FREELIST: %p\n", (void*) ((char*)headofz + (headofz->header.block_size<<4) + 
+        (((sf_free_header*) ((char*)z-8))->header.block_size<<4)));
+    printf("ADRESS OF ACTUAL FREELIST: %p\n", freelist_head);
+    cr_assert(freelist_head == (void*) ((char*)headofz + (headofz->header.block_size<<4) + 
+        (((sf_free_header*) ((char*)z-8))->header.block_size<<4)));
+    
+    cr_assert(headofz->header.alloc == 1);
+    cr_assert(headofz->header.block_size<<4 == 32);
+    cr_assert(headofz->header.padding_size == 12);
+
+    cr_assert(footofz->alloc == 1);
+    cr_assert(footofz->block_size << 4 == 32);
 }

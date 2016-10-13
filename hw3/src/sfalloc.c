@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <string.h> //ERROR?
 #include "sfmm.h"
 
 #include <stdio.h>
@@ -86,9 +87,23 @@ int main(int argc, char *argv[]) {
     sf_mem_init(MAX_HEAP_SIZE);
 
     // Tell the user about the fields
-    info("Initialized heap with %dmb of heap space.\n", MAX_HEAP_SIZE >> 20);
-    press_to_cont();
+    //info("Initialized heap with %dmb of heap space.\n", MAX_HEAP_SIZE >> 20);
+    //press_to_cont();
 
+/*
+    printf("==CUSTOM TEST CASE==\n");
+    int *x = sf_malloc(sizeof(int)); //will be freed
+    int *y = sf_malloc(sizeof(int));
+    printf("Just to make sure y does something: %p\n", y);
+    sf_free(x);
+    int *z = sf_malloc(sizeof(int)); //replace x
+    printf("Just to make sure z does something: %p\n", z);
+    int *a = sf_malloc(sizeof(int)); //replace x
+    printf("Just to make sure a does something: %p\n", a);
+    int *b = sf_malloc(sizeof(double));
+    printf("Just to double: %p\n", b);
+    press_to_cont();
+*/
     // Print out title for first test
     printf("=== Test1: Allocation test ===\n");
     // Test #1: Allocate an integer
@@ -126,6 +141,7 @@ int main(int argc, char *argv[]) {
 
     // Snapshot the freelist
     printf("=== Test5: Perform a snapshot ===\n");
+    printf("FREELIST HEADER AT TEST 5: %p\n", freelist_head);
     sf_snapshot(true);
     press_to_cont();
 

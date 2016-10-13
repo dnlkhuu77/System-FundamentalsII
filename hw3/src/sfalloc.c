@@ -91,6 +91,13 @@ int main(int argc, char *argv[]) {
     //press_to_cont();
 
 
+    printf("=== Test0: 8192 byte allocation ===\n");
+    void *me = sf_malloc(8192);
+    sf_varprint(me);
+    sf_snapshot(true);
+    sf_free(me);
+    press_to_cont();
+
     printf("==CUSTOM TEST CASE==\n");
     int *x = sf_malloc(sizeof(int)); //will be freed
     int *y = sf_malloc(sizeof(int));
@@ -141,7 +148,6 @@ int main(int argc, char *argv[]) {
 
     // Snapshot the freelist
     printf("=== Test5: Perform a snapshot ===\n");
-    printf("FREELIST HEADER AT TEST 5: %p\n", freelist_head);
     sf_snapshot(true);
     press_to_cont();
 
@@ -156,6 +162,7 @@ int main(int argc, char *argv[]) {
     printf("=== Test7: 8192 byte allocation ===\n");
     void *memory = sf_malloc(8192);
     sf_varprint(memory);
+    sf_snapshot(true);
     sf_free(memory);
     press_to_cont();
 

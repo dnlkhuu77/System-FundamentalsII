@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "sfmm.h"
+#include <errno.h>
 
 /**
  *  HERE ARE OUR TEST CASES NOT ALL SHOULD BE GIVEN STUDENTS
@@ -114,7 +115,6 @@ Test(sf_memsuite, Mutliple_COL, .init = sf_mem_init, .fini = sf_mem_fini){
 }
 
 Test(sf_memsuite, MIXED_M_F, .init = sf_mem_init, .fini = sf_mem_fini){
-    printf("TEST 3\n");
     int *x = sf_malloc(sizeof(int)); //will be freed
     int *y = sf_malloc(sizeof(int));
     sf_free(x);
@@ -137,4 +137,20 @@ Test(sf_memsuite, MIXED_M_F, .init = sf_mem_init, .fini = sf_mem_fini){
 
     cr_assert(footofz->alloc == 1);
     cr_assert(footofz->block_size << 4 == 32);
+}
+
+Test(sf_memsuite, NULL_FREE, .init = sf_mem_init, .fini = sf_mem_fini){
+    //int *x = sf_malloc(0) a ;
+    int* x = NULL;
+    sf_free(x);
+
+    printf("ERRNO PRINTS: %s\n", strerror(errno));
+    cr_assert(strcmp(strerror(errno), "Invalid argument") == 0);
+}
+
+Test(sf_memsuite, MALLOC_FREE_ERROR, .init = sf_mem_init, .fini = sf_mem_fini){
+    int *x = sf_malloc(0);
+    sf_free(x);
+
+    cr_assert(strcmp(strerror(errno), "Invalid argument") == 0);
 }

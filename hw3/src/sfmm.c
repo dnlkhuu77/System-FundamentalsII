@@ -509,10 +509,10 @@ void *sf_realloc(void *ptr, size_t size){
 
 int sf_info(info* meminfo){
 	if(internal < 0 || alloc_size < 0 || allocations < 0 || frees < 0){
-		meminfo->internal = 0;
+		meminfo->internal = internal;
 		meminfo->external = alloc_size;
-		meminfo->allocations = 0;
-		meminfo->frees = 0;
+		meminfo->allocations = allocations;
+		meminfo->frees = frees;
 		return 0;
 	}
   return -1;

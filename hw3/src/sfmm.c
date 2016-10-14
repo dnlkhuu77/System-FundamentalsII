@@ -20,6 +20,7 @@ sf_footer* freelist_foot = NULL;
 int counter, sbrk_count = 0;
 int alloc_size, d_flag = 0;
 uint64_t d_end = 4096;
+int internal, allocations, frees = 0;
 
 
 void *sf_malloc(size_t size){
@@ -241,6 +242,7 @@ void *sf_malloc(size_t size){
 				s2->alloc = 0x1;
 				s2->block_size = (stuff >> 4);
 				alloc_size = alloc_size - stuff;
+				internal = internal + stuff;
 
 				if(alloc_size == 0)
 					freelist_head = NULL;
@@ -307,6 +309,8 @@ void *sf_malloc(size_t size){
 
 				stuff = 16 + padd + size;
 				s1->block_size = (stuff >> 4);
+				alloc_size = alloc_size - stuff;
+				internal = internal + stuff;
 
 				//go the the footer
 				s2 = (sf_footer*)((void*) (s2) + size + padd + 8);
@@ -345,9 +349,8 @@ void *sf_malloc(size_t size){
 				sf_footer* cFooter = ((void*) freelist_head) + ((freelist_head->header.block_size << 4) - 8);
 				cFooter->alloc = 0x0;
 				cFooter->block_size = freelist_head->header.block_size;
-
-				alloc_size = alloc_size - (s2->block_size << 4);
 			}
+			allocations++;
 			return ((void*) s1) + 8;
 		}
 		find_space = find_space->next;
@@ -374,6 +377,7 @@ void sf_free(void *ptr){
 
 void coalesce(void* ptr){
 	//return an error if you try to free null, middle of allication block, 
+	frees++;
 	sf_free_header* cal_ptr = (sf_free_header*) ptr; //cal_ptr holds the header address of the affected block
 	uint64_t size = cal_ptr->header.block_size; //size holds the size of the affected block 
 	size = size << 4;
@@ -385,9 +389,10 @@ void coalesce(void* ptr){
 	if((sf_header*)cal_ptr == (sf_header*) top_ptr && end->alloc == 1){
 		printf("CASE 1\n");
 		alloc_size = alloc_size + size;
+		internal = internal - size;
 		//[M*][M][F]
 		cal_ptr->header.alloc = 0x0;
-		//cal_ptr->header.padding_size = 0;
+		cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		sf_free_header* temp = freelist_head;
@@ -400,8 +405,9 @@ void coalesce(void* ptr){
 		//[M][M*][F]
 		printf("CASE 3\n");
 		alloc_size = alloc_size + size;
+		internal = internal - size;
 		cal_ptr->header.alloc = 0x0;
-		//cal_ptr->header.padding_size = 0;
+		cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		sf_free_header* head_check = (void*) foot;
@@ -419,8 +425,9 @@ void coalesce(void* ptr){
 		//[F][M*][M]
 		printf("CASE 2\n");
 		alloc_size = alloc_size + size;
+		internal = internal - size;
 		cal_ptr->header.alloc = 0x0;
-		//cal_ptr->header.padding_size = 0;
+		cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		cal_ptr = ((void*) cal_ptr) - 8;
@@ -440,6 +447,7 @@ void coalesce(void* ptr){
 		//[F][M*][F]
 		printf("CASE 4\n");
 		alloc_size = alloc_size + size;
+		internal = internal - size;
 		cal_ptr->header.alloc = 0x0;
 		foot->alloc = 0x0;
 
@@ -457,6 +465,7 @@ void coalesce(void* ptr){
 
 		cal_ptr->header.alloc = 0x0;
 		cal_ptr->header.block_size = (b_movefooter + b_moveheader + size) >> 4;
+		cal_ptr->header.padding_size = 0;
 
 		foot->alloc = 0x0;
 		foot->block_size = (b_movefooter + b_moveheader + size) >> 4;
@@ -470,8 +479,9 @@ void coalesce(void* ptr){
 		//[M][M*][M]
 		printf("CASE 5\n");
 		alloc_size = alloc_size + size;
+		internal = internal - size;
 		cal_ptr->header.alloc = 0x0;
-		//cal_ptr->header.padding_size = 0;
+		cal_ptr->header.padding_size = 0;
 		foot->alloc = 0x0;
 
 		sf_free_header* temp = freelist_head;
@@ -490,9 +500,20 @@ void *sf_realloc(void *ptr, size_t size){
 		return (void*) -1;
 	}
 
-  return NULL;
+	ptr = ptr - 8; //go to the header
+	//sf_free_header* cal_ptr = (sf_free_header*) ptr;
+
+
+  	return NULL;
 }
 
 int sf_info(info* meminfo){
+	if(internal < 0 || alloc_size < 0 || allocations < 0 || frees < 0){
+		meminfo->internal = 0;
+		meminfo->external = alloc_size;
+		meminfo->allocations = 0;
+		meminfo->frees = 0;
+		return 0;
+	}
   return -1;
 }

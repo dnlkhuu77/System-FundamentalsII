@@ -18,11 +18,12 @@ sf_free_header* top_ptr = NULL;
 sf_free_header* bottom_ptr = NULL;
 sf_footer* freelist_foot = NULL;
 int counter, sbrk_count = 0;
-int alloc_size = 0;
-
+int alloc_size, d_flag = 0;
+uint64_t d_end = 4096;
 
 
 void *sf_malloc(size_t size){
+	d_flag = 0; //only set when you malloc not at the end
 	if(size <= 0 || size > ((4096 * 4) - 16)){
 		errno = ENOMEM;
 		return (void*) -1;
@@ -49,13 +50,13 @@ void *sf_malloc(size_t size){
 		return (void*) -1;
 	}
 
-	top_ptr = (void*) sf_sbrk(0);
+	//top_ptr = (void*) sf_sbrk(0);
 	if(alloc_size < size){ ///if there is no free space left
 		if(freelist_head == NULL){
 			freelist_head = (sf_free_header*) sf_sbrk(1); //POSSIBLE ERROR
 			freelist_head = ((void*) freelist_head) - 4096;
 
-			//top_ptr = freelist_head;
+			top_ptr = freelist_head;
 			//printf("Address of freelist_head: %p\n", freelist_head);
 			alloc_size = alloc_size + 4096;
 
@@ -121,7 +122,7 @@ void *sf_malloc(size_t size){
 			freelist_head->next = NULL;
 		}
 		else{ //the freelist_header is not NULL [MixtureofMandF][FreeLIST]
-			sf_free_header* oHead = freelist_head;
+			//sf_free_header* oHead = freelist_head;
 			freelist_head = (sf_free_header*) sf_sbrk(1); //make more space
 			alloc_size = alloc_size + 4096;
 			freelist_head = ((void*) freelist_head) - 4096; //NEW
@@ -129,17 +130,20 @@ void *sf_malloc(size_t size){
 
 			//PLEASE DO THE IF-ELSE OF MULTIPLE SBRK!
 			if(sbrk_count >= 1){ //you add 1 sbrk 
+
 				sf_free_header* find_space = ((void*) freelist_head) - 8; //go to the previous block to set ptrs
 				if(find_space->header.alloc == 0){ //if the previous block is free, coalesce
 
-					sf_footer* find_footspace = ((sf_footer*) find_space); //go to the previous block
-					uint64_t freesize = find_footspace->block_size << 4; //get the block size of the free
-					freelist_head = ((void*) freelist_head) - freesize;
+					//sf_footer* find_footspace = ((sf_footer*) find_space); //go to the previous block
+					//uint64_t freesize = find_footspace->block_size << 4; //get the block size of the free
+					//printf("SIZE OF THE FREESIZE: %d\n", (int) freesize);
+					printf("d_end prints %d\n", (int)d_end);
+					freelist_head = ((void*) freelist_head) - d_end;
 					freelist_head->header.alloc = 0;
 					freelist_head->header.block_size = alloc_size >> 4; //it already increase by 4096
 					freelist_head->header.padding_size = 0;
 
-					freelist_foot = (sf_footer*) (((void*) freelist_head) + (free_size + 4096 - 8)); //request more memory
+					freelist_foot = (sf_footer*) (((void*) freelist_head) + (d_end + 4096 - 8)); //request more memory
 					freelist_foot->alloc = 0x0;
 					freelist_foot->block_size = alloc_size >> 4;
 
@@ -165,14 +169,14 @@ void *sf_malloc(size_t size){
 				sf_free_header* find_space = ((void*) freelist_head) - 8; //go to the previous block to set ptrs
 				if(find_space->header.alloc == 0){ //if the previous block is free, coalesce
 
-					sf_footer* find_footspace = ((sf_footer*) find_space);
-					uint64_t freesize = find_footspace->block_size << 4; //get the block size of the free
-					freelist_head = ((void*) freelist_head) - freesize;
+					//sf_footer* find_footspace = ((sf_footer*) find_space);
+					//uint64_t freesize = find_footspace->block_size << 4; //get the block size of the free
+					freelist_head = ((void*) freelist_head) - d_end;
 					freelist_head->header.alloc = 0;
 					freelist_head->header.block_size = alloc_size >> 4; //it already increase by 4096
 					freelist_head->header.padding_size = 0;
 
-					freelist_foot = (sf_footer*) (((void*) freelist_head) + (freesize + 4096 + 4096 - 8)); //request more memory
+					freelist_foot = (sf_footer*) (((void*) freelist_head) + (d_end + 4096 + 4096 - 8)); //request more memory
 					freelist_foot->alloc = 0x0;
 					freelist_foot->block_size = alloc_size >> 4;
 
@@ -195,14 +199,14 @@ void *sf_malloc(size_t size){
 				sf_free_header* find_space = ((void*) freelist_head) - 8; //go to the previous block to set ptrs
 				if(find_space->header.alloc == 0){ //if the previous block is free, coalesce
 
-					sf_footer* find_footspace = ((sf_footer*) find_space); //go to the previous block
-					uint64_t freesize = find_footspace->block_size << 4; //get the block size of the free
-					freelist_head = ((void*) freelist_head) - freesize;
+					//sf_footer* find_footspace = ((sf_footer*) find_space); //go to the previous block
+					//uint64_t freesize = find_footspace->block_size << 4; //get the block size of the free
+					freelist_head = ((void*) freelist_head) - d_end;
 					freelist_head->header.alloc = 0;
 					freelist_head->header.block_size = alloc_size >> 4; //it already increase by 4096
 					freelist_head->header.padding_size = 0;
 
-					freelist_foot = (sf_footer*) (((void*) freelist_head) + (freesize + 4096 + 4096 + 4096 - 8)); //request more memory
+					freelist_foot = (sf_footer*) (((void*) freelist_head) + (d_end + 4096 + 4096 + 4096 - 8)); //request more memory
 					freelist_foot->alloc = 0x0;
 					freelist_foot->block_size = alloc_size >> 4;
 
@@ -218,8 +222,8 @@ void *sf_malloc(size_t size){
 				}
 			}
 
-			freelist_head->next = oHead->next;
-			freelist_head->prev = oHead->prev;
+			freelist_head->next = NULL;
+			freelist_head->prev = NULL;
 		}
 	}
 
@@ -234,6 +238,7 @@ void *sf_malloc(size_t size){
 			if(((find_space->header.block_size << 4) - (size + 16)) < 32){ //SPLINTERS!
 				if(find_space->next == NULL && find_space->prev == NULL){
 					freelist_head = NULL;
+					d_flag = 1;
 				}
 				else if(find_space->next != NULL && find_space->prev == NULL){ //HEAD
 					find_next = find_space->next;
@@ -249,6 +254,7 @@ void *sf_malloc(size_t size){
 				else if(find_space->next == NULL && find_space->prev != NULL){ //TAIL
 					find_prev = find_space->prev;
 					find_prev->next = find_space->next;
+					d_flag = 1;
 				}
 
 				uint64_t padd = 0;
@@ -276,18 +282,23 @@ void *sf_malloc(size_t size){
 				if(alloc_size == 0)
 					freelist_head = NULL;
 
-				//sf_free_header* oldHead = NULL;
+				if(d_flag == 1 && counter == 1){
+					d_end = d_end - stuff;
+					d_flag = 0;
+				}
+
+				sf_free_header* oHead = NULL;
 				if(freelist_head != NULL){ //the updated free block becomes the header
-					//oldHead = freelist_head;
+					oHead = freelist_head;
 					freelist_head = ((void*) s1) + stuff;
 
 					while(freelist_head->header.alloc == 1){
 						freelist_head = (sf_free_header*)(((void*) freelist_head) + (freelist_head->header.block_size << 4));
 					}
 
-					//oldHead->prev = freelist_head;
-					//freelist_head->next = oldHead;
-					//freelist_head->prev = NULL;
+					oHead->prev = freelist_head;
+					freelist_head->next = oHead;
+					freelist_head->prev = NULL;
 				}
 				else{
 					freelist_head = ((void*)s1) + stuff;
@@ -300,6 +311,7 @@ void *sf_malloc(size_t size){
 			else{ //NON SPLINTERS
 				if(find_space->next == NULL && find_space->prev == NULL){
 					freelist_head = NULL;
+					d_flag = 1;
 				}
 				else if(find_space->next != NULL && find_space->prev == NULL){ //HEAD
 					find_next = find_space->next;
@@ -315,6 +327,7 @@ void *sf_malloc(size_t size){
 				else if(find_space->next == NULL && find_space->prev != NULL){ //TAIL
 					find_prev = find_space->prev;
 					find_prev->next = find_space->next;
+					d_flag = 1;
 				}
 
 				uint64_t b_size = (find_space->header.block_size) << 4;
@@ -341,18 +354,23 @@ void *sf_malloc(size_t size){
 
 				find_space = ((void*) s2) + 8; //move the pointer to the end of the footer
 
+				if(d_flag == 1 && counter == 1){
+					d_end = d_end - stuff;
+					d_flag = 0;
+				}
 
-				sf_free_header* oldHead = NULL;
+
+				sf_free_header* oHead = NULL;
 				if(freelist_head != NULL){ //the updated free block becomes the header
-					oldHead = freelist_head;
+					oHead = freelist_head;
 					freelist_head = ((void*) s1) + stuff;
 
 					while(freelist_head->header.alloc == 1){
 						freelist_head = (sf_free_header*)(((void*) freelist_head) + (freelist_head->header.block_size << 4));
 					}
 
-					oldHead->prev = freelist_head;
-					freelist_head->next = oldHead;
+					oHead->prev = freelist_head;
+					freelist_head->next = oHead;
 					freelist_head->prev = NULL;
 				}
 				else{
@@ -372,7 +390,7 @@ void *sf_malloc(size_t size){
 
 				alloc_size = alloc_size - (s2->block_size << 4);
 			}
-			sf_varprint(((void*) s1) + 8);
+			//sf_varprint(((void*) s1) + 8);
 			return ((void*) s1) + 8;
 		}
 		find_space = find_space->next;
@@ -419,8 +437,8 @@ void coalesce(void* ptr){
 
 		sf_free_header* temp = freelist_head;
 		freelist_head = cal_ptr;
-		cal_ptr->next = temp;
-		temp->prev = cal_ptr;
+		freelist_head->next = temp;
+		temp->prev = freelist_head;
 		freelist_foot = foot;
 	}
 	else if(start->alloc == 1 && end->alloc == 0){
@@ -438,8 +456,10 @@ void coalesce(void* ptr){
 		foot->block_size = ((head_check->header.block_size << 4) + (cal_ptr->header.block_size << 4)) >> 4;
 		cal_ptr->header.block_size = foot->block_size;
 		freelist_head = ((void*) cal_ptr);
-		freelist_head->next = head_check->next;
+		freelist_head->next = head_check->next;  
 		freelist_foot = foot;
+		printf("The size of the freed block in case 3 is: %d\n", head_check->header.block_size << 4);
+		d_end = d_end + (size);
 	}
 	else if(start->alloc ==0 && end->alloc == 1){
 		//[F][M*][M]
@@ -490,6 +510,7 @@ void coalesce(void* ptr){
 		freelist_head = cal_ptr;
 		freelist_head->next = head_check->next;
 		freelist_foot = foot;
+		d_end = d_end + size + b_moveheader; //the foot is already freed and is part of d_end
 	}
 	else if(start->alloc == 1 && end->alloc == 1){
 		//[M][M*][M]

@@ -1,0 +1,183 @@
+Testcase,Points,Notes,Description
+"Surrogates.txt: Program failed to convert UTF-16LE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,Surrogates.txt: Program failed to convert UTF-16LE to UTF-16LE and had a valid return code.
+"Surrogates.txt: Program failed to convert UTF-16BE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,Surrogates.txt: Program failed to convert UTF-16BE to UTF-16BE and had a valid return code.
+"ASCII.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,ASCII.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"Nonsurrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,Nonsurrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"Mixed.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,Mixed.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"Surrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,Surrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"ASCII.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,ASCII.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"Nonsurrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,Nonsurrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"Mixed.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,Mixed.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"Surrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,Surrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"ASCII.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code. - 0.625
+","0.625
+",,ASCII.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code.
+"Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code. - 0.625
+","0.625
+",,Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code.
+"Mixed.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code. - 0.625
+","0.625
+",,Mixed.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code.
+"ASCII.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code. - 0.625
+","0.625
+",,ASCII.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code.
+"Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code. - 0.625
+","0.625
+",,Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code.
+"Mixed.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code. - 0.625
+","0.625
+",,Mixed.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code.
+,,Your files had EOF issues (-5 pts deducted from total score).,EOF
+"Incorrect -h output - 0
+","0
+",,Incorrect -h output
+"Incorrect --help output - 0
+","0
+",,Incorrect --help output
+"Correct valid --UTF handling - 2
+","2
+",,Correct valid --UTF handling
+"Incorrect invalid --UTF handling - 0
+","0
+",,Incorrect invalid --UTF handling
+"Correct handling of correct mixed arguments (-u 16LE --help ...) - 2
+","2
+",,Correct handling of correct mixed arguments (-u 16LE --help ...)
+"Incorrect handling of incorrect mixed arguments (-u --help 16LE  ...) - 0
+","0
+",,Incorrect handling of incorrect mixed arguments (-u --help 16LE  ...)
+"Correct difference between -v and -vv - 2
+","2
+",,Correct difference between -v and -vv
+"Correct filesize - 1
+","1
+",,Correct filesize
+"Correct filepath - 1
+","1
+",,Correct filepath
+"Incorrect input encoding - 0
+","0
+",,Incorrect input encoding
+"Incorrect output encoding - 0
+","0
+",,Incorrect output encoding
+"Correct hostmachine - 1
+","1
+",,Correct hostmachine
+"Correct operating system - 1
+","1
+",,Correct operating system
+"Incorrect ASCII percentage - 0
+","0
+",,Incorrect ASCII percentage
+"Correct surrogate percentage - 1
+","1
+",,Correct surrogate percentage
+"Incorrect glyph count - 0
+","0
+",,Incorrect glyph count
+"Correct timing - 3
+","3
+",,Correct timing
+"Incorrect rtn. code of nonexistent file - 0
+","0
+",,Incorrect rtn. code of nonexistent file
+"Correct rtn. code of identical input and output file - 2
+","2
+",,Correct rtn. code of identical input and output file
+"Correct rtn. code of empty file - 2
+","2
+",,Correct rtn. code of empty file
+"Incorrect rtn. code/output of preexisting file - 0
+","0
+",,Incorrect rtn. code/output of preexisting file
+"Correct rtn. code of symbolic file - 2
+","2
+",,Correct rtn. code of symbolic file
+"Correctcd rtn. code of mismatched output encodings for preexisting file - 2
+","2
+",,Correctcd rtn. code of mismatched output encodings for preexisting file
+"Program does not support OUT_FILE - 0
+","0
+",,Program does not support OUT_FILE
+"make debug 
+","
+",,make
+"Makefile supports make debug - 2
+","2
+",,Makefile supports make debug
+"Valgrind reported no open file descriptors at exit - 2
+","2
+",,Valgrind reported no open file descriptors at exit
+"No memory errors or warnings (free, still reachable, etc) - 2
+","2
+",,"No memory errors or warnings (free, still reachable, etc)"
+"No valgrind errors - 2
+","2
+",,No valgrind errors
+"Program Successfully Compiles - 2
+","2
+",,Program Successfully Compiles
+"ASCII.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,ASCII.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"Nonsurrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,Nonsurrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"Mixed.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,Mixed.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"Surrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code. - 0.25
+","0.25
+",,Surrogates.txt:Program failed to convert UTF-16LE to UTF-16BE and had a valid return code.
+"ASCII.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,ASCII.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"Nonsurrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,Nonsurrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"Mixed.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,Mixed.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"Surrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code. - 0.25
+","0.25
+",,Surrogates.txt:Program failed to convert UTF-16BE to UTF-16LE and had a valid return code.
+"ASCII.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code. - 0.625
+","0.625
+",,ASCII.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code.
+"Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code. - 0.625
+","0.625
+",,Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code.
+"Mixed.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code. - 0.625
+","0.625
+",,Mixed.txt: Program failed to convert UTF-8 to UTF-16LE and had a valid return code.
+"ASCII.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code. - 0.625
+","0.625
+",,ASCII.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code.
+"Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code. - 0.625
+","0.625
+",,Nonsurrogates.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code.
+"Mixed.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code. - 0.625
+","0.625
+",,Mixed.txt: Program failed to convert UTF-8 to UTF-16BE and had a valid return code.
+Total,39.0,,

@@ -22,7 +22,6 @@ uint64_t d_end = 4096;
 int top_flag = 0;
 size_t internal, alloc_size, external, allocations, frees = 0;
 
-
 void *sf_malloc(size_t size){
 	d_flag = 0; //only set when you malloc not at the end
 	if(size <= 0 || size > ((4096 * 4) - 16)){
@@ -60,8 +59,6 @@ void *sf_malloc(size_t size){
 				top_ptr = freelist_head;
 				top_flag = 1;
 			}
-
-			top_ptr = freelist_head;
 
 			alloc_size = alloc_size + 4096;
 			external = external + 4080;
@@ -154,8 +151,7 @@ void *sf_malloc(size_t size){
 					freelist_foot->alloc = 0x0;
 					freelist_foot->block_size = alloc_size >> 4;
 				}
- 
-			} //you add 2 sbrk
+			}
 			if(sbrk_count >= 2){
 				oHead = (sf_free_header*) sf_sbrk(2);
 				alloc_size = alloc_size + 4096;
@@ -170,7 +166,6 @@ void *sf_malloc(size_t size){
 				freelist_foot = (sf_footer*) (((void*) sf_sbrk(0)) - 8); //request more memory
 				freelist_foot->alloc = 0x0;
 				freelist_foot->block_size = alloc_size >> 4;
-
 			}
 			if(sbrk_count >= 3){
 				oHead = (sf_free_header*) sf_sbrk(3);
@@ -202,14 +197,12 @@ void *sf_malloc(size_t size){
 			uint64_t test_pad = size;
 			int stuff = 0;
 
-			s1->alloc = 0x1;
-
 			while(test_pad % 16 != 0){
 				test_pad++;
 				padd++;
 			}
 
-			if(((find_space->header.block_size << 4) - (size + padd+ 16)) <= 32){ //SPLINTERS!
+			if(((find_space->header.block_size << 4) - (size + padd+ 16)) < 32){ //SPLINTERS!
 				if(find_space->next == NULL && find_space->prev == NULL){
 					freelist_head = NULL;
 					d_flag = 1;
@@ -232,7 +225,6 @@ void *sf_malloc(size_t size){
 				}
 
 				s1->alloc = 0x1;
-
 				s1->padding_size = padd;
 
 				stuff = (find_space->header.block_size << 4);
@@ -293,7 +285,6 @@ void *sf_malloc(size_t size){
 				uint64_t b_size = (find_space->header.block_size) << 4;
 
 				s1->alloc = 0x1;
-
 				s1->padding_size = padd;
 
 				stuff = 16 + padd + size;
@@ -355,18 +346,16 @@ void sf_free(void *ptr){
 	else{
 		ptr = ptr - 8; //go to the header
 		sf_header* cal_ptr = (sf_header*) ptr;
-		if(cal_ptr->alloc == 0 || (cal_ptr->block_size << 4) <= 0){
+		if(cal_ptr->alloc != 1 || (cal_ptr->block_size << 4) <= 0){
 			errno = EFAULT;
 		}
 		else{
 			coalesce(ptr);
 		}
 	}
-
 }
 
-void coalesce(void* ptr){
-	//return an error if you try to free null, middle of allication block, 
+void coalesce(void* ptr){ 
 	frees++;
 	sf_free_header* cal_ptr = (sf_free_header*) ptr; //cal_ptr holds the header address of the affected block
 	int size = cal_ptr->header.block_size << 4; //size holds the size of the affected block 
@@ -375,7 +364,22 @@ void coalesce(void* ptr){
 	sf_header* start = (sf_header*)(((void*) cal_ptr) - 8);
 	sf_footer* end = (sf_footer*)(((void*) foot) + 8);
 
-	if((sf_header*)cal_ptr == (sf_header*) top_ptr && end->alloc == 1){
+	if(cal_ptr->header.alloc == 0 && end->alloc == 0){
+		//merge [*F][F] (like case 2)
+		printf("SBRK_FREE\n");
+		sf_free_header* oldHead = cal_ptr; //oldHead will be the first block || cal_ptr will be the second block
+
+		cal_ptr = ((void*) cal_ptr) + size;
+		int64_t b_move = (cal_ptr->header.block_size) << 4; //b_move is the size of the second block
+
+		foot = (sf_footer*)((void*)cal_ptr + b_move - 8); //the foot
+		foot->block_size = (b_move + size) >> 4;
+		oldHead->header.block_size = (b_move + size) >> 4;
+
+		freelist_head = oldHead;
+		freelist_foot = foot;
+	}
+	else if((sf_header*)cal_ptr == (sf_header*) top_ptr && end->alloc == 1){
 		printf("CASE 1\n");
 		alloc_size = alloc_size + size;
 		external = external + size - 16;
@@ -489,15 +493,113 @@ void coalesce(void* ptr){
 
 void *sf_realloc(void *ptr, size_t size){
 	//shrink, enlarge, search the free list, sbrk (memcopy)
-	if(ptr == NULL || size == 0){
+	int convert_flag = 0;
+	sf_footer* oldFoot;
+	sf_footer* newFoot;
+	if(ptr == NULL || size <= 0){
 		errno = EINVAL;
 		return NULL;
 	}
 	ptr = ptr - 8; //go to the header
-	//sf_free_header* cal_ptr = (sf_free_header*) ptr;
-	//if(cal_ptr->alloc == 0 || (cal_ptr->block_size << 4) <= 0 || (void*)cal_ptr > (void*)top_ptr){
-	//		errno = EFAULT;
-	//	}
+	sf_free_header* cal_ptr = (sf_free_header*) ptr;
+	if(cal_ptr->header.alloc != 1 || (cal_ptr->header.block_size << 4) <= 0){
+			errno = EFAULT;
+			return NULL;
+	}
+
+	size_t actual_size = cal_ptr->header.block_size << 4;
+	sf_free_header* next_block = (void*)cal_ptr + actual_size;
+	int splinter_check = 0;
+
+	if(actual_size == size) //PLEASE INVLUDE THE PADDING!
+		return (ptr + 8);
+	else if(actual_size > size)
+		convert_flag = -1; //shrink
+	else if(actual_size < size)
+		convert_flag = 1; //expand
+
+	uint64_t padd = 0;
+	uint64_t test_pad = size;
+
+	while(test_pad % 16 != 0){
+		test_pad++;
+		padd++;
+	}
+
+	if(convert_flag == -1){ //shrink
+		splinter_check = actual_size - (size + 16);
+		if(splinter_check < 32){ //splinter
+			cal_ptr->header.padding_size = padd;
+			return (void*)cal_ptr + 8;
+		}else{ //no splinters
+			//check the new block of ptr to see if we need to coalesce the free block we created
+			if(next_block->header.alloc == 1){
+				//the next block is alloacted
+				oldFoot = (sf_footer*)((void*)cal_ptr + actual_size - 8);
+				oldFoot->alloc = 0;
+				oldFoot->block_size = (-1) >> 4;
+
+				newFoot = (sf_footer*)((void*)cal_ptr + size + padd + 16 - 8);
+				newFoot->alloc = 1;
+				newFoot->block_size = (size + 16 + padd) >> 4;
+				cal_ptr->header.block_size = (size + 16 + padd) >> 4;
+				cal_ptr->header.padding_size = padd;
+				cal_ptr->header.alloc = 1;
+
+				//move the freelist_head
+				freelist_head = (sf_free_header*)((void*)newFoot + 8);
+				freelist_head->header.alloc = 0;
+				freelist_head->header.block_size = ((actual_size) - size - padd - 16) >> 4;
+				printf("SIZE OF FREELIST: %d\n", freelist_head->header.block_size);
+				return (void*) cal_ptr + 8;
+
+			}else{
+				//the next block is free (coalesce)
+				oldFoot = (sf_footer*)((void*)cal_ptr + actual_size - 8);
+				oldFoot->block_size = (-1) >> 4;
+				oldFoot->alloc = 0x0;
+
+				newFoot = (sf_footer*)((void*)cal_ptr + size + padd + 16 - 8);
+				newFoot->alloc = 1;
+				newFoot->block_size = (size + padd + 16) >> 4;
+				cal_ptr->header.block_size = (size + padd + 16) >> 4;
+				cal_ptr->header.padding_size = padd;
+				cal_ptr->header.alloc = 1;
+
+				sf_free_header* newBlock = ((void*)newFoot + 8);
+				newBlock->header.alloc = 0;
+				newBlock->header.block_size = ((actual_size) - size - padd - 16) >> 4;
+				coalesce((void*)newFoot + 8);
+
+				freelist_head = (sf_free_header*)((void*)newFoot + 8);
+				return (void*)cal_ptr + 8;
+			}
+		}
+
+	}/*else if(convert_flag == 1){
+		if(next_block->header.alloc == 0){ //next to free block
+			int more_space = (next_block->header.block_size << 4);
+
+			if(more_space < (actual_size - size)){
+				//if the free block next to it is not enough for the expansion
+				//move to another space (possible sbrk from malloc)
+				void* sf_malloc(size);
+				memcopy()
+			}
+
+			splinter_check = actual_size - (size + 16);
+			if(splinter_check < 32){
+				//splinter
+			}
+			else if(splinter_check >=32){
+				//no splinter
+			}
+		}else{ //next to allocated block
+			//move to another space (possible sbrk from malloc)
+
+		}
+	}*/
+
 
   	return NULL;
 }

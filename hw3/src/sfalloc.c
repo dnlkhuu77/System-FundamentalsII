@@ -90,25 +90,16 @@ int main(int argc, char *argv[]) {
     //info("Initialized heap with %dmb of heap space.\n", MAX_HEAP_SIZE >> 20);
     //press_to_cont();
 
-
-    printf("=== Test0: 8192 byte allocation ===\n");
-    void *me = sf_malloc(8192);
-    sf_varprint(me);
-    sf_snapshot(true);
-    sf_free(me);
-    press_to_cont();
-
     printf("==CUSTOM TEST CASE==\n");
-    int *x = sf_malloc(sizeof(int)); //will be freed
-    int *y = sf_malloc(sizeof(int));
-    printf("Just to make sure y does something: %p\n", y);
-    sf_free(x);
-    int *z = sf_malloc(sizeof(int)); //replace x
-    printf("Just to make sure z does something: %p\n", z);
-    int *a = sf_malloc(sizeof(int)); //replace x
-    printf("Just to make sure a does something: %p\n", a);
-    int *b = sf_malloc(sizeof(double));
-    printf("Just to double: %p\n", b);
+    int* x = sf_malloc((4*4096) - 16);
+    sf_varprint(x);
+
+    sf_free_header* headofx = (sf_free_header*)((void*)x - 8);
+    sf_footer* footofx = (sf_footer*)((void*)((void*)headofx + (headofx->header.block_size << 4)) - 8);
+
+    printf("Block Size of X in Head%d\n", headofx->header.block_size << 4);
+    printf("FOOT OF X: %p\n", footofx);
+    printf("Block Size of X in Foot: %d\n", footofx->block_size << 4);
     press_to_cont();
 
     // Print out title for first test
@@ -119,7 +110,7 @@ int main(int argc, char *argv[]) {
     payload_check(value1);
     // Print out the allocator block
     sf_varprint(value1);
-    press_to_cont();
+    //press_to_cont();
 
     // Now assign a value
     printf("=== Test2: Assignment test ===\n");
@@ -128,9 +119,9 @@ int main(int argc, char *argv[]) {
     *value1 = VALUE1_VALUE;
     // Now check its value
     check_prim_contents(value1, VALUE1_VALUE, "%d", "value1");
-    press_to_cont();
+    //press_to_cont();
 
-    printf("=== Test3: Allocate a second variable ===\n");
+   // printf("=== Test3: Allocate a second variable ===\n");
     info("Attempting to assign value2 = %ld\n", VALUE2_VALUE);
     long *value2 = sf_malloc(sizeof(long));
     null_check(value2, sizeof(long));
@@ -140,23 +131,23 @@ int main(int argc, char *argv[]) {
     *value2 = VALUE2_VALUE;
     // Check value
     check_prim_contents(value2, VALUE2_VALUE, "%ld", "value2");
-    press_to_cont();
+    //press_to_cont();
 
     printf("=== Test4: does value1 still equal %d ===\n", VALUE1_VALUE);
     check_prim_contents(value1, VALUE1_VALUE, "%d", "value1");
-    press_to_cont();
+    //press_to_cont();
 
     // Snapshot the freelist
     printf("=== Test5: Perform a snapshot ===\n");
     sf_snapshot(true);
-    press_to_cont();
+    //press_to_cont();
 
     // Free a variable
     printf("=== Test6: Free a block and snapshot ===\n");
     info("Freeing value1...\n");
     sf_free(value1);
     sf_snapshot(true);
-    press_to_cont();
+    //press_to_cont();
 
     // Allocate more memory
     printf("=== Test7: 8192 byte allocation ===\n");

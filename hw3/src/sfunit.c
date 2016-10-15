@@ -157,10 +157,8 @@ Test(sf_memsuite, MALLOC_FREE_ERROR, .init = sf_mem_init, .fini = sf_mem_fini){
     cr_assert(strcmp(strerror(errno), "Invalid argument") == 0);
 }
 
-//8 MORE TEST CASES (13 IN TOTAL)
-
 Test(sf_memsuite, SPLINTER, .init = sf_mem_init, .fini = sf_mem_fini){
-    int *x = sf_malloc(33);
+    int *x = sf_malloc(31);
     double* y = sf_malloc(sizeof(double));
 
     sf_free(x);
@@ -175,7 +173,7 @@ Test(sf_memsuite, SPLINTER, .init = sf_mem_init, .fini = sf_mem_fini){
     sf_footer* footofz = (sf_footer*)((char*)((char*)headofz + (headofz->header.block_size << 4)) - 8);
 
     cr_assert(headofz->header.alloc == 1);
-    cr_assert(headofz->header.block_size << 4 == 64);
+    cr_assert(headofz->header.block_size << 4 == 48);
     cr_assert(headofz->header.padding_size == 12);
 
     cr_assert(footofz == (void*)headofy - 8);
@@ -204,3 +202,83 @@ Test(sf_memsuite, MALLOC_WHOLE, .init = sf_mem_init, .fini = sf_mem_fini){
     cr_assert(freelist_head == NULL);
 }
 
+Test(sf_memsuite, MALLOC_FOUR, .init = sf_mem_init, .fini = sf_mem_fini){
+    int* x = sf_malloc((4*4096) - 16);
+
+    sf_free_header* headofx = (sf_free_header*)((void*)x - 8);
+    sf_footer* footofx = (sf_footer*)((void*)((void*)headofx + (headofx->header.block_size << 4)) - 8);
+
+    cr_assert(freelist_head == NULL);
+    cr_assert(headofx->header.block_size << 4 == (4096*4));
+    cr_assert(footofx->block_size << 4 == (4096*4));
+    cr_assert(headofx->header.alloc == 1);
+    cr_assert(footofx->alloc == 1);
+}
+
+Test(sf_memsuite, REALLOC_NO_SPLINTER_NEXTBLOCKFREE, .init = sf_mem_init, .fini = sf_mem_fini) {
+    int *x = sf_malloc(112); //used to be 112
+ 
+    sf_free_header* headofx = (sf_free_header*)((char*) x - 8);
+    sf_footer* footofx = (sf_footer*)((char*)((char*)headofx + (headofx->header.block_size << 4)) - 8);
+ 
+    cr_assert(headofx->header.block_size << 4 == 128);
+    cr_assert(headofx->header.alloc == 1);
+    cr_assert(headofx->header.padding_size == 0);
+ 
+    cr_assert(footofx->block_size << 4 == 128);
+    cr_assert(footofx->alloc == 1);
+ 
+    cr_assert(freelist_head == (void*)footofx + 8);
+ 
+    sf_realloc(x, 4);
+ 
+    cr_assert(headofx->header.block_size << 4 == 32);
+    cr_assert(headofx->header.alloc == 1);
+    cr_assert(headofx->header.padding_size == 12);
+ 
+    cr_assert(footofx->alloc == 0);
+ 
+    sf_free_header* freehead = (sf_free_header*)((char*)headofx + (headofx->header.block_size << 4));
+
+    cr_assert(freelist_head == freehead);
+    cr_assert(freelist_head->header.block_size << 4 == 4064); // 4096 - 128(MALLOC) + 96(REALLOC);
+}
+
+Test(sf_memsuite, REALLOC_NOSPLINTER_NEXTBLOCKALLOC, .init = sf_mem_init, .fini = sf_mem_fini) {
+    // REALLOC, NO SPLINTER; NEXT BLOCK ALLOC
+    int *x = sf_malloc(112);   // 128 BYTES
+    int *y = sf_malloc(4);     // 32 BYTES
+ 
+    sf_free_header* headofx = (sf_free_header*)((char*) x - 8);
+    sf_footer* footofx = (sf_footer*)((char*)((char*)headofx + (headofx->header.block_size << 4)) - 8);
+ 
+    sf_free_header* headofy = (sf_free_header*)((char*) y - 8);
+    sf_footer* footofy = (sf_footer*)((char*)((char*)headofy + (headofy->header.block_size << 4)) - 8);
+ 
+    cr_assert(headofx->header.block_size << 4 == 128);
+    cr_assert(headofx->header.alloc == 1);
+    cr_assert(headofx->header.padding_size == 0);
+ 
+    cr_assert(footofx->block_size << 4 == 128);
+    cr_assert(footofx->alloc == 1);
+ 
+    cr_assert(headofy->header.block_size << 4 == 32);
+    cr_assert(headofy->header.alloc == 1);
+    cr_assert(headofy->header.padding_size == 12);
+ 
+    cr_assert(freelist_head == (void*)footofy + 8);
+ 
+    sf_realloc(x, 4);      // 32 BYTES
+ 
+    cr_assert(headofx->header.block_size << 4 == 32);
+    cr_assert(headofx->header.alloc == 1);
+    cr_assert(headofx->header.padding_size == 12);
+ 
+    cr_assert(footofx->alloc == 0);
+ 
+    sf_free_header* freehead = (sf_free_header*)((char*)headofx + (headofx->header.block_size << 4));
+ 
+    cr_assert(freelist_head == freehead);
+    cr_assert(freelist_head->header.block_size << 4 == 96); // 96(REALLOC);
+ 
+}

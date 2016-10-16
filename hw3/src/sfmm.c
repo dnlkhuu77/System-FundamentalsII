@@ -20,7 +20,7 @@ sf_footer* freelist_foot = NULL;
 int counter, sbrk_count, d_flag = 0;
 uint64_t d_end = 4096;
 int top_flag = 0;
-size_t internal, alloc_size, external, allocations, frees = 0;
+static size_t internal, alloc_size, external, allocations, c_count, frees = 0;
 
 void *sf_malloc(size_t size){
 	d_flag = 0; //only set when you malloc not at the end
@@ -350,13 +350,14 @@ void sf_free(void *ptr){
 			errno = EFAULT;
 		}
 		else{
+			frees++;
 			coalesce(ptr);
 		}
 	}
 }
 
 void coalesce(void* ptr){ 
-	frees++;
+	c_count++;
 	sf_free_header* cal_ptr = (sf_free_header*) ptr; //cal_ptr holds the header address of the affected block
 	int size = cal_ptr->header.block_size << 4; //size holds the size of the affected block 
 	sf_footer* foot = ((void*) cal_ptr) + size - 8; //foot gets the footer
@@ -375,6 +376,7 @@ void coalesce(void* ptr){
 		foot = (sf_footer*)((void*)cal_ptr + b_move - 8); //the foot
 		foot->block_size = (b_move + size) >> 4;
 		oldHead->header.block_size = (b_move + size) >> 4;
+		oldHead->header.padding_size = 0;
 
 		freelist_head = oldHead;
 		freelist_foot = foot;
@@ -399,7 +401,7 @@ void coalesce(void* ptr){
 	}
 	else if(start->alloc == 1 && end->alloc == 0){
 		//[M][M*][F]
-		printf("CASE 3\n");
+		printf("CASE 2\n");
 		alloc_size = alloc_size + size;
 		external = external + size - 16;
 		internal = internal - 16 - cal_ptr->header.padding_size;
@@ -420,7 +422,7 @@ void coalesce(void* ptr){
 	}
 	else if(start->alloc ==0 && end->alloc == 1){
 		//[F][M*][M]
-		printf("CASE 2\n");
+		printf("CASE 3\n");
 		alloc_size = alloc_size + size;
 		external = external + size -16;
 		internal = internal - 16 - cal_ptr->header.padding_size;
@@ -507,16 +509,9 @@ void *sf_realloc(void *ptr, size_t size){
 			return NULL;
 	}
 
-	size_t actual_size = cal_ptr->header.block_size << 4;
+	int actual_size = cal_ptr->header.block_size << 4;
 	sf_free_header* next_block = (void*)cal_ptr + actual_size;
 	int splinter_check = 0;
-
-	if(actual_size == size) //PLEASE INVLUDE THE PADDING!
-		return (ptr + 8);
-	else if(actual_size > size)
-		convert_flag = -1; //shrink
-	else if(actual_size < size)
-		convert_flag = 1; //expand
 
 	uint64_t padd = 0;
 	uint64_t test_pad = size;
@@ -525,6 +520,15 @@ void *sf_realloc(void *ptr, size_t size){
 		test_pad++;
 		padd++;
 	}
+
+	if(actual_size == (size + 16 + padd))
+		return (ptr + 8);
+	else if(actual_size > (size + 16 + padd))
+		convert_flag = -1; //shrink
+	else if(actual_size < (size + 16 + padd))
+		convert_flag = 1; //expand
+
+	allocations++;
 
 	if(convert_flag == -1){ //shrink
 		splinter_check = actual_size - (size + 16);
@@ -538,6 +542,7 @@ void *sf_realloc(void *ptr, size_t size){
 				oldFoot = (sf_footer*)((void*)cal_ptr + actual_size - 8);
 				oldFoot->alloc = 0;
 				oldFoot->block_size = (-1) >> 4;
+				int oldPad = cal_ptr->header.padding_size;
 
 				newFoot = (sf_footer*)((void*)cal_ptr + size + padd + 16 - 8);
 				newFoot->alloc = 1;
@@ -550,7 +555,9 @@ void *sf_realloc(void *ptr, size_t size){
 				freelist_head = (sf_free_header*)((void*)newFoot + 8);
 				freelist_head->header.alloc = 0;
 				freelist_head->header.block_size = ((actual_size) - size - padd - 16) >> 4;
-				printf("SIZE OF FREELIST: %d\n", freelist_head->header.block_size);
+				alloc_size = alloc_size + (actual_size - (size + padd + 16));
+				internal = internal - (oldPad -padd);
+				//external doesn't change
 				return (void*) cal_ptr + 8;
 
 			}else{
@@ -570,37 +577,82 @@ void *sf_realloc(void *ptr, size_t size){
 				newBlock->header.alloc = 0;
 				newBlock->header.block_size = ((actual_size) - size - padd - 16) >> 4;
 				coalesce((void*)newFoot + 8);
-
+				//coalesce handles it
 				freelist_head = (sf_free_header*)((void*)newFoot + 8);
 				return (void*)cal_ptr + 8;
 			}
 		}
 
-	}/*else if(convert_flag == 1){
+	}else if(convert_flag == 1){
 		if(next_block->header.alloc == 0){ //next to free block
-			int more_space = (next_block->header.block_size << 4);
 
-			if(more_space < (actual_size - size)){
-				//if the free block next to it is not enough for the expansion
+			int more_space = (next_block->header.block_size << 4); //next block sould be 4096-32
+			int oldPad = next_block->header.padding_size;
+
+			if((more_space + actual_size) < (actual_size + (size + padd + 16))){ //if the free block next to it is not enough for the expansion
 				//move to another space (possible sbrk from malloc)
-				void* sf_malloc(size);
-				memcopy()
+				void* newPlace = sf_malloc(size);
+				memcpy(newPlace, cal_ptr, actual_size); //ptr is already at the payload
+				coalesce(cal_ptr);
+				allocations--;
+				//internal, external handled already in malloc and free
+				return (void*)newPlace + 8;
 			}
 
-			splinter_check = actual_size - (size + 16);
+			splinter_check = (more_space + actual_size) - (size + padd + 16);
 			if(splinter_check < 32){
-				//splinter
+				//splinter (take entire block)
+				oldFoot = (sf_footer*)((void*)cal_ptr + actual_size - 8);
+				oldFoot->alloc = 0;
+				oldFoot->block_size = (-1) >> 4;
+
+				newFoot = (sf_footer*)((void*)next_block - 8);
+				newFoot->alloc = 1;
+				newFoot->block_size = (more_space + actual_size) >> 4;
+				cal_ptr->header.block_size = (more_space + actual_size) >> 4;
+				cal_ptr->header.padding_size = padd;
+				cal_ptr->header.alloc = 1;
+
+				//move the freelist_head
+				freelist_head = (sf_free_header*)((void*)newFoot + 8);
+				freelist_head->header.alloc = 0;
+				freelist_head->header.block_size = ((alloc_size) + (actual_size - (size + padd +16))) >> 4;
+				alloc_size = ((alloc_size) + (actual_size - (size + padd +16)));
+				internal = internal + splinter_check;
+				external = external - (more_space - 16 - padd);
+				return (void*)cal_ptr + 8;
 			}
 			else if(splinter_check >=32){
-				//no splinter
+				//no splinter (ordinary split)
+				oldFoot = (sf_footer*)((void*)cal_ptr + actual_size - 8);
+				oldFoot->alloc = 0;
+				oldFoot->block_size = (-1) >> 4;
+
+				newFoot = (sf_footer*)((void*)cal_ptr + size + padd + 16 - 8);
+				newFoot->alloc = 1;
+				newFoot->block_size = (size + 16 + padd) >> 4;
+				cal_ptr->header.block_size = (size + 16 + padd) >> 4;
+				cal_ptr->header.padding_size = padd;
+				cal_ptr->header.alloc = 1;
+
+				//move the freelist_head
+				freelist_head = (sf_free_header*)((void*)newFoot + 8);
+				freelist_head->header.alloc = 0;
+				freelist_head->header.block_size = ((alloc_size) + (actual_size - (size + padd +16))) >> 4;
+				alloc_size = ((alloc_size) + (actual_size - (size + padd +16)));
+				internal = internal + (padd - oldPad);
+				external = external - (more_space - 16 - padd);
+				return (void*)cal_ptr + 8;
 			}
 		}else{ //next to allocated block
 			//move to another space (possible sbrk from malloc)
-
+			void* newPlace = sf_malloc(size);
+			memcpy(newPlace, cal_ptr, actual_size); //ptr is already at the payload
+			coalesce(cal_ptr);
+			allocations++;
+			return (void*)newPlace + 8;
 		}
-	}*/
-
-
+	}
   	return NULL;
 }
 
@@ -610,9 +662,19 @@ int sf_info(info* meminfo){
 
 	if(internal >= 0 && external >= 0 && allocations >= 0 && frees >= 0){
 		meminfo->internal = internal;
-		meminfo->external = external;
 		meminfo->allocations = allocations;
 		meminfo->frees = frees;
+		meminfo->coalesce = c_count;
+
+		sf_free_header* visit = freelist_head;
+		int lets = 0;
+
+		while(visit != NULL){
+			lets += visit->header.block_size << 4;
+			visit = visit->next;
+		}
+
+		meminfo->external = lets;
 		return 0;
 	}
   return -1;

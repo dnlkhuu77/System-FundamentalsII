@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
-#include <string.h> //ERROR?
+#include <string.h>
 #include "sfmm.h"
 
 #include <stdio.h>
@@ -89,18 +89,6 @@ int main(int argc, char *argv[]) {
     // Tell the user about the fields
     //info("Initialized heap with %dmb of heap space.\n", MAX_HEAP_SIZE >> 20);
     //press_to_cont();
-
-    printf("==CUSTOM TEST CASE==\n");
-    int* x = sf_malloc((4*4096) - 16);
-    sf_varprint(x);
-
-    sf_free_header* headofx = (sf_free_header*)((void*)x - 8);
-    sf_footer* footofx = (sf_footer*)((void*)((void*)headofx + (headofx->header.block_size << 4)) - 8);
-
-    printf("Block Size of X in Head%d\n", headofx->header.block_size << 4);
-    printf("FOOT OF X: %p\n", footofx);
-    printf("Block Size of X in Foot: %d\n", footofx->block_size << 4);
-    press_to_cont();
 
     // Print out title for first test
     printf("=== Test1: Allocation test ===\n");

@@ -158,28 +158,27 @@ Test(sf_memsuite, MALLOC_FREE_ERROR, .init = sf_mem_init, .fini = sf_mem_fini){
 }
 
 Test(sf_memsuite, SPLINTER, .init = sf_mem_init, .fini = sf_mem_fini){
-    int *x = sf_malloc(31);
+    int *x = sf_malloc(29);
     double* y = sf_malloc(sizeof(double));
 
     sf_free(x);
     int *z = sf_malloc(4);
     sf_free_header *headofy = (sf_free_header*)((void*)y - 8);
 
-    sf_footer *footofy = (sf_footer*)((char*)(((char*)headofy) + (headofy->header.block_size << 4)) - 8);
+    sf_footer *footofy = (sf_footer*)((void*)(((void*)headofy) + (headofy->header.block_size << 4)) - 8);
 
     cr_assert(freelist_head == (void*)footofy + 8);
 
-    sf_free_header* headofz = (sf_free_header*)((char*)z - 8);
-    sf_footer* footofz = (sf_footer*)((char*)((char*)headofz + (headofz->header.block_size << 4)) - 8);
+    sf_free_header* headofz = (sf_free_header*)((void*)z - 8);
+    sf_footer* footofz = (sf_footer*)((void*)((void*)headofz + (headofz->header.block_size << 4)) - 8);
 
     cr_assert(headofz->header.alloc == 1);
     cr_assert(headofz->header.block_size << 4 == 48);
     cr_assert(headofz->header.padding_size == 12);
-
     cr_assert(footofz == (void*)headofy - 8);
 }
 
-Test(sf_memsuite, MALLOC_OVER_FOUR, .init = sf_mem_init, .fini = sf_mem_fini){
+Test(sf_memsuite, MALLOC_OVERFOUR, .init = sf_mem_init, .fini = sf_mem_fini){
     int* a = sf_malloc(16384);
     cr_assert(a == NULL);
 }
@@ -191,11 +190,12 @@ Test(sf_memsuite, MALLOC_WHOLE, .init = sf_mem_init, .fini = sf_mem_fini){
     sf_free_header* headofa = (sf_free_header*)((void*)a - 8);
     sf_footer* footofa = (sf_footer*)((void*)((void*)headofa + (headofa->header.block_size << 4)) - 8);
 
+    cr_assert(headofa->header.block_size << 4 == 4032);
+    cr_assert(footofa->block_size << 4 == 4032);
+
     sf_free_header* headofb = (sf_free_header*)((void*)b - 8);
     sf_footer* footofb = (sf_footer*)((void*)((void*)headofb + (headofb->header.block_size << 4)) - 8);
 
-    cr_assert(headofa->header.block_size << 4 == 4032);
-    cr_assert(footofa->block_size << 4 == 4032);
     cr_assert(headofb->header.block_size << 4 == 64);
     cr_assert(footofb->block_size << 4 == 64);
 
@@ -203,30 +203,27 @@ Test(sf_memsuite, MALLOC_WHOLE, .init = sf_mem_init, .fini = sf_mem_fini){
 }
 
 Test(sf_memsuite, MALLOC_FOUR, .init = sf_mem_init, .fini = sf_mem_fini){
-    int* x = sf_malloc((4*4096) - 16);
+    int* x = sf_malloc(16384 - 16);
 
     sf_free_header* headofx = (sf_free_header*)((void*)x - 8);
     sf_footer* footofx = (sf_footer*)((void*)((void*)headofx + (headofx->header.block_size << 4)) - 8);
 
     cr_assert(freelist_head == NULL);
-    cr_assert(headofx->header.block_size << 4 == (4096*4));
-    cr_assert(footofx->block_size << 4 == (4096*4));
     cr_assert(headofx->header.alloc == 1);
+    cr_assert(headofx->header.block_size << 4 == (4096*4));
     cr_assert(footofx->alloc == 1);
+    cr_assert(footofx->block_size << 4 == (4096*4));
 }
 
-Test(sf_memsuite, REALLOC_NO_SPLINTER_NEXTBLOCKFREE, .init = sf_mem_init, .fini = sf_mem_fini) {
-    int *x = sf_malloc(112); //used to be 112
+Test(sf_memsuite, REALLOC_NOSPLINTER_NEXTFREE, .init = sf_mem_init, .fini = sf_mem_fini) {
+    int *x = sf_malloc(112);
  
-    sf_free_header* headofx = (sf_free_header*)((char*) x - 8);
-    sf_footer* footofx = (sf_footer*)((char*)((char*)headofx + (headofx->header.block_size << 4)) - 8);
+    sf_free_header* headofx = (sf_free_header*)((void*) x - 8);
+    sf_footer* footofx = (sf_footer*)((void*)((void*)headofx + (headofx->header.block_size << 4)) - 8);
  
     cr_assert(headofx->header.block_size << 4 == 128);
     cr_assert(headofx->header.alloc == 1);
     cr_assert(headofx->header.padding_size == 0);
- 
-    cr_assert(footofx->block_size << 4 == 128);
-    cr_assert(footofx->alloc == 1);
  
     cr_assert(freelist_head == (void*)footofx + 8);
  
@@ -235,50 +232,59 @@ Test(sf_memsuite, REALLOC_NO_SPLINTER_NEXTBLOCKFREE, .init = sf_mem_init, .fini 
     cr_assert(headofx->header.block_size << 4 == 32);
     cr_assert(headofx->header.alloc == 1);
     cr_assert(headofx->header.padding_size == 12);
- 
-    cr_assert(footofx->alloc == 0);
- 
-    sf_free_header* freehead = (sf_free_header*)((char*)headofx + (headofx->header.block_size << 4));
-
-    cr_assert(freelist_head == freehead);
-    cr_assert(freelist_head->header.block_size << 4 == 4064); // 4096 - 128(MALLOC) + 96(REALLOC);
 }
 
-Test(sf_memsuite, REALLOC_NOSPLINTER_NEXTBLOCKALLOC, .init = sf_mem_init, .fini = sf_mem_fini) {
-    // REALLOC, NO SPLINTER; NEXT BLOCK ALLOC
-    int *x = sf_malloc(112);   // 128 BYTES
-    int *y = sf_malloc(4);     // 32 BYTES
+Test(sf_memsuite, REALLOC_NOSPLINTER_NEXTALLOC, .init = sf_mem_init, .fini = sf_mem_fini) {
+    int *x = sf_malloc(112);
+    int *y = sf_malloc(6);
+    memset(y, 0xFF, 6);
  
-    sf_free_header* headofx = (sf_free_header*)((char*) x - 8);
-    sf_footer* footofx = (sf_footer*)((char*)((char*)headofx + (headofx->header.block_size << 4)) - 8);
- 
-    sf_free_header* headofy = (sf_free_header*)((char*) y - 8);
-    sf_footer* footofy = (sf_footer*)((char*)((char*)headofy + (headofy->header.block_size << 4)) - 8);
+    sf_free_header* headofx = (sf_free_header*)((void*) x - 8);
+    sf_footer* footofx = (sf_footer*)((void*)((void*)headofx + (headofx->header.block_size << 4)) - 8);
  
     cr_assert(headofx->header.block_size << 4 == 128);
     cr_assert(headofx->header.alloc == 1);
-    cr_assert(headofx->header.padding_size == 0);
  
     cr_assert(footofx->block_size << 4 == 128);
     cr_assert(footofx->alloc == 1);
  
-    cr_assert(headofy->header.block_size << 4 == 32);
-    cr_assert(headofy->header.alloc == 1);
-    cr_assert(headofy->header.padding_size == 12);
- 
-    cr_assert(freelist_head == (void*)footofy + 8);
- 
-    sf_realloc(x, 4);      // 32 BYTES
+    sf_realloc(x, 4);
  
     cr_assert(headofx->header.block_size << 4 == 32);
     cr_assert(headofx->header.alloc == 1);
     cr_assert(headofx->header.padding_size == 12);
  
-    cr_assert(footofx->alloc == 0);
+}
+
+Test(sf_memsuite, REALLOC_EXPAND_NOSPLINTER, .init = sf_mem_init, .fini = sf_mem_fini) {
+    int *x = sf_malloc(4);
+    sf_realloc(x, 32);
  
-    sf_free_header* freehead = (sf_free_header*)((char*)headofx + (headofx->header.block_size << 4));
+    sf_free_header* headofx = (sf_free_header*)((char*) x - 8);
+    sf_footer* footofx = (sf_footer*)((char*)((char*)headofx + (headofx->header.block_size << 4)) - 8);
  
-    cr_assert(freelist_head == freehead);
-    cr_assert(freelist_head->header.block_size << 4 == 96); // 96(REALLOC);
+    cr_assert(headofx->header.block_size << 4 == 48);
+    cr_assert(freelist_head == (void*)footofx + 8);
+    cr_assert(freelist_head->header.block_size << 4 == 4048);
+ 
+}
+Test(sf_memsuite, REALLOC_EXPAND_SPLINTER, .init = sf_mem_init, .fini = sf_mem_fini) {
+    int *x = sf_malloc(4);
+ 
+    sf_free_header* headofx = (sf_free_header*)((char*) x - 8);
+ 
+    cr_assert(headofx->header.block_size << 4 == 32);
+    cr_assert(headofx->header.alloc == 1);
+    cr_assert(headofx->header.padding_size == 12);
+ 
+    cr_assert(freelist_head->header.block_size << 4 == 4064);
+ 
+    sf_realloc(x, 19);
+ 
+    cr_assert(headofx->header.block_size << 4 == 48);
+    cr_assert(headofx->header.alloc == 1);
+    cr_assert(headofx->header.padding_size == 13);
+ 
+    cr_assert(freelist_head->header.block_size << 4 == 4048);
  
 }

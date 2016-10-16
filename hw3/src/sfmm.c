@@ -658,7 +658,7 @@ int sf_info(info* meminfo){
 	if(meminfo == NULL)
 		return -1;
 
-	if(internal >= 0 && external >= 0 && allocations >= 0 && frees >= 0){
+	if(internal >= 0 && external >= 0 && allocations >= 0 && frees >= 0 && c_count >= 0){
 		meminfo->internal = internal;
 		meminfo->external = external;
 		meminfo->allocations = allocations;

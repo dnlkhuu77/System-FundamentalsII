@@ -5,8 +5,6 @@
 #include "sfmm.h"
 #include "sfmm2.h"
 
-int free_size = 0;
-
 /**
  * All functions you make for the assignment must be implemented in this file.
  * Do not submit your assignment with a main function in this file.
@@ -235,8 +233,8 @@ void *sf_malloc(size_t size){
 				s2->alloc = 0x1;
 				s2->block_size = (stuff >> 4);
 				alloc_size = alloc_size - stuff;
-				external = external - stuff + 16;
-				internal = internal + stuff - size;;
+				external = external - stuff;
+				internal = internal + stuff - size;
 
 				if(alloc_size == 0)
 					freelist_head = NULL;
@@ -290,7 +288,7 @@ void *sf_malloc(size_t size){
 				stuff = 16 + padd + size;
 				s1->block_size = (stuff >> 4);
 				alloc_size = alloc_size - stuff;
-				external = external - stuff + 16;
+				external = external - stuff;
 				internal = internal + stuff - size;
 
 				//go the the footer
@@ -384,7 +382,7 @@ void coalesce(void* ptr){
 	else if((sf_header*)cal_ptr == (sf_header*) top_ptr && end->alloc == 1){
 		printf("CASE 1\n");
 		alloc_size = alloc_size + size;
-		external = external + size - 16;
+		external = external + size - 16 -cal_ptr->header.padding_size;
 		internal = internal - 16 - cal_ptr->header.padding_size;
 		//[M*][M][F]
 		cal_ptr->header.alloc = 0x0;
@@ -403,7 +401,7 @@ void coalesce(void* ptr){
 		//[M][M*][F]
 		printf("CASE 2\n");
 		alloc_size = alloc_size + size;
-		external = external + size - 16;
+		external = external + size - 16 - cal_ptr->header.padding_size;
 		internal = internal - 16 - cal_ptr->header.padding_size;
 		cal_ptr->header.alloc = 0x0;
 		cal_ptr->header.padding_size = 0;
@@ -424,7 +422,7 @@ void coalesce(void* ptr){
 		//[F][M*][M]
 		printf("CASE 3\n");
 		alloc_size = alloc_size + size;
-		external = external + size -16;
+		external = external + size -16 - cal_ptr->header.padding_size;
 		internal = internal - 16 - cal_ptr->header.padding_size;
 		cal_ptr->header.alloc = 0x0;
 		cal_ptr->header.padding_size = 0;
@@ -446,7 +444,7 @@ void coalesce(void* ptr){
 		//[F][M*][F]
 		printf("CASE 4\n");
 		alloc_size = alloc_size + size;
-		external = external + size - 16;
+		external = external + size - 16 - cal_ptr->header.padding_size;
 		internal = internal - 16 - cal_ptr->header.padding_size;
 		cal_ptr->header.alloc = 0x0;
 		foot->alloc = 0x0;
@@ -479,7 +477,7 @@ void coalesce(void* ptr){
 		//[M][M*][M]
 		printf("CASE 5\n");
 		alloc_size = alloc_size + size;
-		external = external + size - 16;
+		external = external + size - 16 - cal_ptr->header.padding_size;
 		internal = internal - 16 - cal_ptr->header.padding_size;
 		cal_ptr->header.alloc = 0x0;
 		cal_ptr->header.padding_size = 0;
@@ -649,7 +647,7 @@ void *sf_realloc(void *ptr, size_t size){
 			void* newPlace = sf_malloc(size);
 			memcpy(newPlace, cal_ptr, actual_size); //ptr is already at the payload
 			coalesce(cal_ptr);
-			allocations++;
+			allocations--;
 			return (void*)newPlace + 8;
 		}
 	}
@@ -662,19 +660,10 @@ int sf_info(info* meminfo){
 
 	if(internal >= 0 && external >= 0 && allocations >= 0 && frees >= 0){
 		meminfo->internal = internal;
+		meminfo->external = external;
 		meminfo->allocations = allocations;
 		meminfo->frees = frees;
 		meminfo->coalesce = c_count;
-
-		sf_free_header* visit = freelist_head;
-		int lets = 0;
-
-		while(visit != NULL){
-			lets += visit->header.block_size << 4;
-			visit = visit->next;
-		}
-
-		meminfo->external = lets;
 		return 0;
 	}
   return -1;

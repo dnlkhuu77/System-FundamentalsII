@@ -1,7 +1,7 @@
 #include "utfconverter.h"
 
 int fd, fd2 = 0;
-int v_counter = 0;
+int v_counter, go = 0;
 int num_bytes = 0;
 float ascii_count, ascii_total = 0;
 float surr_count, surr_total = 0;
@@ -14,6 +14,7 @@ static struct tms read_start2, read_end2, convert_start2, convert_end2, write_st
 int main(int argc, char** argv){
 	unsigned char buf[MAX_BYTES];
 	int rv = 0;
+	go = 0;
 	Glyph* glyph = NULL;
 
 	/* After calling parse_args(), filename and conversion should be set. */
@@ -58,7 +59,7 @@ int main(int argc, char** argv){
 		memset(glyph, 0, sizeof(Glyph));
 	}
 
-	if((rv = read(fd2, &buf[0], 1)) == 1 && (rv = read(fd2, &buf[1], 1)) == 1){
+	if((rv = read(fd2, &outBuff[0], 1)) == 1 && (rv = read(fd2, &outBuff[1], 1)) == 1){
 		if((outBuff[0] == 0xFF) && (outBuff[1] == 0xFE)){
 			if(conversion == BIG){
 				free(glyph);
@@ -103,15 +104,62 @@ int main(int argc, char** argv){
 	write_glyph(glyph,fd2);
 
 	/*conversion of the rest of the bytes*/
-	while((rv = read(fd, &buf[0], 1)) == 1 && (rv = read(fd, &buf[1], 1)) == 1){
-		fill_glyph(glyph, buf, source, &fd);
-		if(source != UTF8)
-			write_glyph(glyph, fd2);
-		else{
-			num_bytes = how_many_bytes(buf);
-			convert(glyph, conversion);
+	if(source != UTF8){
+		while((rv = read(fd, &buf[0], 1)) == 1 && (rv = read(fd, &buf[1], 1)) == 1){
+			fill_glyph(glyph, buf, source, &fd);
 			write_glyph(glyph, fd2);
 		}
+	}
+	else if(source == UTF8){
+
+		while((rv = read(fd, &buf[0], 1)) == 1){
+
+			num_bytes = how_many_bytes(buf);
+
+			if(num_bytes == 1){
+				if (fill_glyph(glyph, buf, source, &fd) == NULL)
+					return EXIT_FAILURE;
+			}
+			else if(num_bytes == 2){
+				if((rv = read(fd, &buf[1], 1)) == 1){
+					if (fill_glyph(glyph, buf, source, &fd) == NULL)
+						return EXIT_FAILURE;
+				}
+				else{
+					print_help();
+					return EXIT_FAILURE;
+				}
+			}
+			else if(num_bytes == 3){
+				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1){
+					if (fill_glyph(glyph, buf, source, &fd) == NULL)
+						return EXIT_FAILURE;
+				}
+				else{
+					print_help();
+					return EXIT_FAILURE;
+				}
+			}
+			else if(num_bytes == 4){
+				if((rv = read(fd, &buf[1], 1)) == 1 && (rv = read(fd, &buf[2], 1)) == 1 && 
+					(rv = read(fd, &buf[3], 1)) == 1){
+					if (fill_glyph(glyph, buf, source, &fd) == NULL)
+						return EXIT_FAILURE;
+				}
+				else{
+					return EXIT_FAILURE;
+				}
+			}
+
+			if(num_bytes == 1){
+				if((rv = read(fd, &buf[1], 1)) != 1)
+					return EXIT_FAILURE;
+			}
+
+			glyph = convert(glyph, conversion);
+			write_glyph(glyph, fd2);
+		}
+
 	}
 
 	read_end = clock();
@@ -149,18 +197,18 @@ Glyph* swap_endianness(Glyph* glyph){
 	return glyph;
 }
 
-int how_many_bytes(unsigned char data[1]){
-	if((data[FIRST] >> 7) == 0){
+int how_many_bytes(unsigned char data[MAX_BYTES]){
+	if((data[0] >> 7) == 0){
 		return 1;
 	}
 	else{
-		if((data[FIRST] >> 5) == 0x06){
+		if((data[0] >> 5) == 0x06){
 			return 2;
 		}
-		else if((data[FIRST] >> 4) == 0xe){ 
+		else if((data[0] >> 4) == 0xe){ 
 			return 3;
 		}
-		else if((data[FIRST] >> 3) == 0x1e){
+		else if((data[0] >> 3) == 0x1e){
 			return 4;
 		}
 		else{
@@ -196,8 +244,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 		swap_endianness(glyph);
 	}
 	else if(end == UTF8){
-		/*fprintf(stderr, "FILL GLYPH: %8x\n", data[FIRST]);
-		fprintf(stderr, "HOW MANY BYTES MOVED %d\n", num_bytes);*/
 		if(num_bytes == 1){
 			glyph->bytes[0] = data[0];
 			glyph->bytes[1] = 0;
@@ -377,7 +423,7 @@ void parse_args(int argc, char** argv){
 
 void print_help(void) {
 	int j = 0;
-	for(j = 0; j < 5; j++){
+	for(j = 0; j < 11; j++){
 		write(STDOUT_FILENO, USAGE[j], strlen(USAGE[j])); 
 	}
 	quit_converter(fd);
@@ -512,40 +558,32 @@ Glyph* convert(Glyph* glyph, endianness end){
 			glyph->bytes[0] = glyph->bytes[0];
 			glyph->bytes[1] = 0;
 
-			if(glyph->bytes[0] < 128 && glyph->bytes[1] == 0)
-				ascii_count++;;
-
 		}else if(end == BIG){
 			glyph->bytes[1] = glyph->bytes[0];
 			glyph->bytes[0] = 0;
-
-			if(glyph->bytes[1] < 128 && glyph->bytes[0] == 0)
-				ascii_count++;
 		}
+
 		glyph->bytes[2] = 0;
 		glyph->bytes[3] = 0;
 	}
 	else{
 		if(num_bytes == 2){
-			unsigned int temp;
-			unsigned int temp2;
+			unsigned long temp;
 			temp = 0;
 
 			glyph->bytes[0] = glyph->bytes[0] & 0x1f;
 			glyph->bytes[1] = glyph->bytes[1] & 0x3f;
 
-			temp += glyph->bytes[0]; 
-			temp = temp << 6;
-			temp2 = glyph->bytes[1];
-			temp2 = temp2;
-			temp += temp2;
+			glyph->bytes[1] = glyph->bytes[1] << 2;
+			temp = (glyph->bytes[0] << 8) | glyph->bytes[1];
+			temp = temp >> 2;
 
 			if(end == LITTLE){
 				glyph->bytes[0] = temp;
-				glyph->bytes[1] = 0;
+				glyph->bytes[1] = (temp >> 8);
 			}else if(end == BIG){
 				glyph->bytes[1] = temp;
-				glyph->bytes[0] = 0;
+				glyph->bytes[0] = temp >> 8;
 			}
 
 			glyph->bytes[2] = 0;
@@ -554,32 +592,28 @@ Glyph* convert(Glyph* glyph, endianness end){
 		}
 
 		else if(num_bytes == 3){
-			unsigned int temp;
+			unsigned long temp;
 			temp = 0;
-			a1 = 0; 
-			a2 = 0;
 
-			glyph->bytes[0] = glyph->bytes[0] & 0x0f;
-			temp += glyph->bytes[0];
-			temp = temp << 6;
+			glyph->bytes[0] = glyph->bytes[0] & 0x0F;
+			glyph->bytes[1] = glyph->bytes[1] & 0x3F;
+			glyph->bytes[2] = glyph->bytes[2] & 0x3F;
 
-			glyph->bytes[1] = glyph->bytes[1] & 0x3f;
-			temp += glyph->bytes[1];
-			temp = temp << 6;
+			glyph->bytes[1] = glyph->bytes[1] << 2;
+			glyph->bytes[2] = glyph->bytes[2] << 2;
 
-			glyph->bytes[2] = glyph->bytes[2] & 0x3f;
-			temp += glyph->bytes[2];
-
-			a1 = (temp & 0xFF00) >> 8;
-			a2 = temp & 0x00FF;
+			temp = (glyph->bytes[0] << 8) | glyph->bytes[1];
+			temp = temp >> 2;
+			temp = (temp << 8) | glyph->bytes[2];
+			temp = temp >> 2;
 
 			if(end == BIG){
-				glyph->bytes[0] = a1;
-				glyph->bytes[1] = a2;
+				glyph->bytes[0] = temp >> 8;
+				glyph->bytes[1] = temp;
 			}
 			else if(end == LITTLE){
-				glyph->bytes[0] = a2;
-				glyph->bytes[1] = a1;
+				glyph->bytes[0] = temp;
+				glyph->bytes[1] = temp >> 8;
 			}
 
 			glyph->bytes[2] = 0;
@@ -588,57 +622,46 @@ Glyph* convert(Glyph* glyph, endianness end){
 
 
 		else if(num_bytes == 4){
-			long mutli, imm1, imm2;
-			unsigned int t1, t2;
+			unsigned long temp, a1, a2;
+			temp = 0;
 			ascii_total++;
 			surr_count++;
 			glyph_total++;
-			mutli = 0;
-			a3 = 0;
-			a4 = 0;
-			t1 = 0;
-			t2 = 0;
 
 			glyph->bytes[0] = glyph->bytes[0] & 0x07;
-			mutli += glyph->bytes[0];
-			mutli = mutli << 6;
-
 			glyph->bytes[1] = glyph->bytes[1] & 0x3f;
-			mutli += glyph->bytes[1]; 
-			mutli = mutli << 6;
-
 			glyph->bytes[2] = glyph->bytes[2] & 0x3f;
-			mutli += glyph->bytes[2];
-			mutli = mutli << 6;
-
 			glyph->bytes[3] = glyph->bytes[3] & 0x3f;
-			mutli += glyph->bytes[3];
+			
+			glyph->bytes[1] = glyph->bytes[1] << 2;
+			glyph->bytes[2] = glyph->bytes[2] << 2;
+			glyph->bytes[3] = glyph->bytes[3] << 2;
 
-			mutli = mutli - 0x10000; /*20 bytes*/
+			temp = (glyph->bytes[0] << 8) | glyph->bytes[1];
+			temp = temp >> 2;
+			temp = (temp << 8) | glyph->bytes[2];
+			temp = temp >> 2;
+			temp = (temp << 8) | glyph->bytes[3];
+			temp = temp >> 2;
 
-			imm1 = mutli >> 10; /*vh*/
-			imm2 = mutli & 0x3FF; /*vl*/
+			temp = temp - 0x10000;
+			a1 = temp >> 10;
+			a1 = a1 + 0xD800;
 
-			t1 = imm1 + 0xD800;
-			t2 = imm2 + 0xDC00;
-
-			a1 = (t1 & 0xFF00) >> 8;
-			a2 = t1 & 0x00FF;
-
-			a4 = (t2 & 0xFF00) >> 8;
-			a3 = t2 & 0x00FF;
+			a2 = temp & 0x3FF;
+			a2 = a2 + 0xDC00;
 
 			if(end == BIG){
-				glyph->bytes[0] = a1;
-				glyph->bytes[1] = a2;
-				glyph->bytes[2] = a4;
-				glyph->bytes[3] = a3;
+				glyph->bytes[0] = a1 >> 8;
+				glyph->bytes[1] = a1;
+				glyph->bytes[2] = a2 >> 8;
+				glyph->bytes[3] = a2;
 			}
 			else if(end == LITTLE){
-				glyph->bytes[0] = a2;
-				glyph->bytes[1] = a1;
-				glyph->bytes[2] = a3;
-				glyph->bytes[3] = a4;
+				glyph->bytes[0] = a1;
+				glyph->bytes[1] = a1 >> 8;
+				glyph->bytes[2] = a2;
+				glyph->bytes[3] = a2 >> 8;
 			}
 
 		}

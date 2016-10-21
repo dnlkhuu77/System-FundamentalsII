@@ -54,12 +54,18 @@ char filename[256];
 char filename2[256];
 
 /** The usage statement.*/
-const char* USAGE[] = { 
-"Usage:  ./utf [-h|--help] -u OUT_ENC | --UTF=OUT_ENC IN_FILE [OUT_FILE]\n",
-"\t-h --help\t\tDisplays this usage statement.\n",
-"\t-v --vv\t\tToggles the verbosity of the program to level 1 or 2.\n\n",
-"\t-u OUT_ENC, --UTF=OUT_ENC\t\tSets the output encoding.\t \n\t\t\t\t\tValid OUT_ENC: 16LE, 16BE\n",
-"\tIN_FILE\t\t The file to convert.\t \t[OUT_FILE] Output file name. If not present, defaults to stdout."
+const char* USAGE[11] = { 
+"Command line utility for converting files from UTF-16LE to UTF-16BE or vice versa\n\n",
+"Usage: ./utf [-h|--help] [-v|-vv] -u OUT_ENC | --UTF=OUT_ENC IN_FILE [OUT_FILE]\n\n",
+"  Option arugments:\n",
+"    -h, --help\t    Displays this usage.\n",
+"    -v, -vv\t    Toggles the verbosity of the program to level 1 or 2\n\n",
+"  Mandatory argument:\n",
+"    -u OUT_ENC, --UTF=OUT_ENC\t Sets the output encoding.\n\t\t\t\t",
+" Valid values for OUT_ENC: 16LE, 16BE\n",
+"  Positional Arguments:\n",
+"    IN_FILE\t    The file to convert.\n",
+"    [OUT_FILE]\t    Output file name. If not present, defaults to stdout.\n"
 };
 
 /** Which endianness to convert to. */

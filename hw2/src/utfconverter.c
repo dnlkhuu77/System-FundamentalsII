@@ -429,7 +429,7 @@ void parse_args(int argc, char** argv){
 
 void print_help(void) {
 	int j = 0;
-	for(j = 0; j < 10; j++){
+	for(j = 0; j < 11; j++){
 		write(STDOUT_FILENO, USAGE[j], strlen(USAGE[j])); 
 	}
 	quit_converter(fd);

@@ -54,8 +54,9 @@ char filename[256];
 char filename2[256];
 
 /** The usage statement.*/
-const char* USAGE[10] = { 
-"./utf [-h|--help] [-v|-vv] -u OUT_ENC | --UTF=OUT_ENC IN_FILE [OUT_FILE]\n\n",
+const char* USAGE[11] = { 
+"Command line utility for converting files from UTF-16LE to UTF-16BE or vice versa.\n\n",
+"Usage: ./utf [-h|--help] [-v|-vv] -u OUT_ENC | --UTF=OUT_ENC IN_FILE [OUT_FILE]\n\n",
 "  Option arugments:\n",
 "    -h, --help\t    Displays this usage.\n",
 "    -v, -vv\t    Toggles the verbosity of the program to level 1 or 2\n\n",

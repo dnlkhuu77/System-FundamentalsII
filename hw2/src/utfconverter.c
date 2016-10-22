@@ -1,7 +1,7 @@
 #include "utfconverter.h"
 
 int fd, fd2 = 0;
-int v_counter, go = 0;
+int v_counter= 0;
 int num_bytes = 0;
 float ascii_count, ascii_total = 0;
 float surr_count, surr_total = 0;
@@ -13,9 +13,9 @@ static struct tms read_start2, read_end2, convert_start2, convert_end2, write_st
 
 int main(int argc, char** argv){
 	unsigned char buf[MAX_BYTES];
+	Glyph* glyph;
 	int rv = 0;
-	go = 0;
-	Glyph* glyph = NULL;
+	glyph = NULL;
 
 	/* After calling parse_args(), filename and conversion should be set. */
 	parse_args(argc, argv);
@@ -23,7 +23,7 @@ int main(int argc, char** argv){
 	if(help_flag == 1)
 		return EXIT_FAILURE;
 	
-	if ((fd = open(filename, O_RDONLY)) == 0)
+	if ((fd = open(filename, O_RDONLY)) <= 0)
 		return EXIT_FAILURE;
 	if(filename2 != NULL)
 		fd2 = open(filename2, O_WRONLY | O_CREAT | O_APPEND, 0666);
@@ -220,18 +220,6 @@ int how_many_bytes(unsigned char data[MAX_BYTES]){
 
 Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, int* fd){
 	unsigned int bits;
-
-	if(end == LITTLE){
-		if(data[0] < 128 && data[1] == 0)
-			ascii_count++;
-		ascii_total++;
-	}
-	else if(end == BIG){
-		if(data[1] < 128 && data[0] == 0)
-			ascii_count++;
-		ascii_total++;
-	}
-
 	
 	if(end == conversion){
 		glyph->bytes[0] = data[0]; 
@@ -253,7 +241,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 			glyph->end = end;
 			glyph->surrogate = false;
 			num_bytes = 1;
-			return glyph;
 		}
 		else{
 			if(num_bytes == 2){
@@ -265,7 +252,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 				glyph->end = end;
 				glyph->surrogate = false;
 				num_bytes = 2;
-				return glyph;
 			}
 			else if(num_bytes == 3){ 
 				/*fprintf(stderr, "SECOND BYTE %8x\n", data[SECOND]);
@@ -278,7 +264,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 				glyph->end = end;
 				glyph->surrogate = false;
 				num_bytes = 3;
-				return glyph;
 			}
 			else if(num_bytes == 4){
 
@@ -289,13 +274,35 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 				glyph->end = end;
 				glyph->surrogate = true;
 				num_bytes = 4;
-				return glyph;
 			}
 			else{
 				print_help(); 
 				return NULL;
 			}
 		}
+
+		if(conversion == LITTLE){
+			if(glyph->bytes[0] < 128 && glyph->bytes[1] == 0)
+				ascii_count++;
+			ascii_total++;
+		}else if(conversion == BIG){
+			if(glyph->bytes[0] == 0 && glyph->bytes[1] < 128)
+				ascii_count++;
+			ascii_total++;
+		}
+		surr_total++;
+		glyph_total++;
+		return glyph;
+	}
+
+	if(conversion == LITTLE){
+		if(glyph->bytes[0] < 128 && glyph->bytes[1] == 0)
+			ascii_count++;
+		ascii_total++;
+	}else if(conversion == BIG){
+		if(glyph->bytes[0] == 0 && glyph->bytes[1] < 128)
+			ascii_count++;
+		ascii_total++;
 	}
 
 	/*regular UTF16 to 16*/
@@ -303,14 +310,15 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 	bits = ((data[FIRST] << 8) + (data[SECOND]));
 	/* Check high surrogate pair using its special value range.*/
 
-	if(bits > 0xD800 && bits < 0xDBFF){ 
+	if(bits > 0xD800 && bits < 0xDBFF){
+		surr_count++; 
 		if(read(*fd, &data[FIRST], 1) == 1 && read(*fd, &data[SECOND], 1) == 1){
 			bits = 0;
 			bits |= ((data[FIRST] << 8) + (data[SECOND]));
 
 			if(bits > 0xDC00 && bits < 0xDFFF){
-				surr_count++;
 				glyph->surrogate = true; 
+				surr_count++;
 			} else {
 				lseek(*fd, -OFFSET, SEEK_CUR);
 				glyph->surrogate = false;
@@ -328,8 +336,6 @@ Glyph* fill_glyph(Glyph* glyph, unsigned char data[MAX_BYTES], endianness end, i
 		if(end != conversion){
 			glyph->bytes[THIRD] = data[SECOND]; 
 			glyph->bytes[FOURTH] = data[FIRST];
-			glyph_total++;
-			ascii_total++;
 		}
 		else if(end  == conversion){
 			glyph->bytes[THIRD] = data[FIRST]; 
@@ -423,7 +429,7 @@ void parse_args(int argc, char** argv){
 
 void print_help(void) {
 	int j = 0;
-	for(j = 0; j < 11; j++){
+	for(j = 0; j < 10; j++){
 		write(STDOUT_FILENO, USAGE[j], strlen(USAGE[j])); 
 	}
 	quit_converter(fd);
@@ -459,16 +465,16 @@ void verb1(char* filename_sh){
 	fprintf(stderr, "Input file path: %s\n", ptr);
 
 	if(source == BIG)
-		fprintf(stderr, "Input file encoding: %s\n", "UTF16-BE");
+		fprintf(stderr, "Input file encoding: %s\n", "UTF-16BE");
 	else if(source == LITTLE)
-		fprintf(stderr, "Input file encoding: %s\n", "UTF16-LE");
+		fprintf(stderr, "Input file encoding: %s\n", "UTF-16LE");
 	else if(source == UTF8)
-		fprintf(stderr, "Input file encoding: %s\n", "UTF8");
+		fprintf(stderr, "Input file encoding: %s\n", "UTF-8");
 
 	if(conversion == BIG)
-		fprintf(stderr, "Output encoding: %s\n", "UTF16-BE");
+		fprintf(stderr, "Output encoding: %s\n", "UTF-16BE");
 	else if(conversion == LITTLE)
-		fprintf(stderr, "Output encoding: %s\n", "UTF16-LE");
+		fprintf(stderr, "Output encoding: %s\n", "UTF-16LE");
 
 	gethostname(hostname, 1023);
 	fprintf(stderr, "Hostmachine: %s\n", hostname);
@@ -501,16 +507,16 @@ void verb2(char* filename_sh){
 	fprintf(stderr, "Input file path: %s\n", ptr);
 
 	if(source == BIG)
-		fprintf(stderr, "Input file encoding: %s\n", "UTF16-BE");
+		fprintf(stderr, "Input file encoding: %s\n", "UTF-16BE");
 	else if(source == LITTLE)
-		fprintf(stderr, "Input file encoding: %s\n", "UTF16-LE");
+		fprintf(stderr, "Input file encoding: %s\n", "UTF-16LE");
 	else if (source == UTF8)
-		fprintf(stderr, "Input file encoding: %s\n", "UTF8");
+		fprintf(stderr, "Input file encoding: %s\n", "UTF-8");
 
 	if(conversion == BIG)
-		fprintf(stderr, "Output encoding: %s\n", "UTF16-BE");
+		fprintf(stderr, "Output encoding: %s\n", "UTF-16BE");
 	else if(conversion == LITTLE)
-		fprintf(stderr, "Output encoding: %s\n", "UTF16-LE");
+		fprintf(stderr, "Output encoding: %s\n", "UTF-16LE");
 
 	gethostname(hostname, 1023);
 	fprintf(stderr, "Hostmachine: %s\n", hostname);
@@ -534,12 +540,12 @@ void verb2(char* filename_sh){
 		);
 
 	if(ascii_total != 0)
-		fprintf(stderr, "ASCII: %.0f%%\n", ((ascii_count / ascii_total) * 100));
+		fprintf(stderr, "ASCII: %.0f%%\n", ((ascii_count * 100) / ascii_total));
 	else
 		fprintf(stderr, "ASCII: 0\n");
 
 	if(surr_total != 0)
-		fprintf(stderr, "Surrogates: %.0f%%\n", ((surr_count / surr_total) * 100));
+		fprintf(stderr, "Surrogates: %.0f%%\n", ((surr_count * 100)/ surr_total));
 
 	fprintf(stderr, "Glyphs: %d\n", glyph_total);
 
@@ -550,9 +556,6 @@ void verb2(char* filename_sh){
 }
 
 Glyph* convert(Glyph* glyph, endianness end){
-	surr_total++;
-	ascii_total++;
-	glyph_total++;
 	if(num_bytes == 1){
 		if(end == LITTLE){
 			glyph->bytes[0] = glyph->bytes[0];
@@ -624,9 +627,6 @@ Glyph* convert(Glyph* glyph, endianness end){
 		else if(num_bytes == 4){
 			unsigned long temp, a1, a2;
 			temp = 0;
-			ascii_total++;
-			surr_count++;
-			glyph_total++;
 
 			glyph->bytes[0] = glyph->bytes[0] & 0x07;
 			glyph->bytes[1] = glyph->bytes[1] & 0x3f;
@@ -663,6 +663,11 @@ Glyph* convert(Glyph* glyph, endianness end){
 				glyph->bytes[2] = a2;
 				glyph->bytes[3] = a2 >> 8;
 			}
+
+			surr_total++;
+			surr_count++;
+			ascii_total++;
+			glyph_total++;
 
 		}
 	}

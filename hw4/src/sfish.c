@@ -3,8 +3,22 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-int return_code = 0;
+#define BLACK "\x1b[30m"
+#define RED "\x1b[31m"
+#define GREEN "\x1b[32m"
+#define YELLOW "\x1b[33m"
+#define BLUE "\x1b[34m"
+#define MAGENTA "\x1b[35m"
+#define CYAN "\x1b[36m"
+#define WHITE "\x1b[37m"
+#define RESET "\x1b[0m"
+
+int u_toggle, m_toggle = 1; //show both machine
+int child_status;
+char* userColor = NULL;
+char* machineColor = NULL;
 char* prevDir;
+char* shellDir;
 
 int main(int argc, char** argv) {
     //DO NOT MODIFY THIS. If you do you will get a ZERO.
@@ -12,23 +26,22 @@ int main(int argc, char** argv) {
     //This is disable readline's default signal handlers, since you are going
     //to install your own.
 
-    char *cmd;
+    char* cmd;
     pid_t pid;
-    int child_status;
-    char* shellDir = calloc(1024, sizeof(char));
-    //char* prompt = calloc(1024, sizeof(char));
+    u_toggle = 1;
+    m_toggle = 1;
 
-    while((cmd = readline(strcat(getcwd(shellDir, 1024), "<sfish> "))) != NULL){
+    while((cmd = readline(cmd_display(u_toggle, m_toggle))) != NULL){
         char* userInput = strtok(cmd, " ");
 
-        if (strcmp(userInput,"quit")==0)
-            break;
-        else if(strcmp(userInput, "help") == 0){
+        if(strcmp(userInput, "help") == 0){
             pid = fork();
-            if(pid == 0)
+            if(pid == 0){
                 print_help();
+                exit(pid);
+            }
             else
-                wait(&child_status);
+                waitpid(pid, &child_status, 0);
         }
         else if(strcmp(userInput, "exit") == 0){
             exit(pid);
@@ -42,28 +55,42 @@ int main(int argc, char** argv) {
             if(pid == 0){
                 char* currentDir = getcwd(shellDir, 1024);
                 printf("%s\n", currentDir);
+                exit(3);
             }
             else{
-                wait(&child_status);
+                waitpid(pid, &child_status, 0);
             }
         }
         else if(strcmp(userInput, "ptr") == 0){
             pid = fork();
             if(pid == 0){
-                printf("%d\n", return_code);
+                printf("%d\n", child_status);
+                exit(3);
             }
             else{
-                wait(&child_status);
+                waitpid(pid, &child_status, 0);
             }
         }
         else if(strcmp(userInput, "chpmt") == 0){
-            printf("TIME\n");
+            char* settings = strtok(NULL, " ");
+            char* togg = strtok(NULL, " ");
+
+            if(strcmp(settings, "user") == 0){
+                if(strcmp(togg, "1") == 0)
+                    u_toggle = 1;
+                else if(strcmp(togg, "0") == 0)
+                    u_toggle = 0;
+            }else if(strcmp(settings, "machine") == 0){
+                if(strcmp(togg, "1") == 0)
+                    m_toggle = 1;
+                else if(strcmp(togg, "0") == 0)
+                    m_toggle = 0;
+            }
+
         }
         else if(strcmp(userInput, "chclr") == 0){
             printf("STUDD\n");
         }
-
-        //printf("%s\n",cmd);
 
         //All your debug print statments should be surrounded by this #ifdef
         //block. Use the debug target in the makefile to run with these enabled.
@@ -88,6 +115,44 @@ void print_help(){
     }
 }
 
+char* cmd_display(int u_togg, int m_togg){
+    char* hostname = (char*) malloc(1024); //hostmachine is machine
+    gethostname(hostname, 1023);
+    //char* hello = (char*) malloc(1024);
+
+    char* hello = getenv("USER"); //hello is user
+    char* currentDir = getcwd(shellDir, 1024);
+
+    char* ans = (char*) malloc(1024);
+    
+    strcpy(ans,"sfish");
+
+    if(u_togg == 1){
+        strcat(ans, "-");
+        strcat(ans, hello);
+    }
+
+    if(u_togg == 1 && m_togg == 1)
+        strcat(ans, "@");
+
+    if(m_togg == 1){
+        strcat(ans, "-");
+        strcat(ans, hostname);
+    }
+
+    strcat(ans, ":[");
+    if(strcmp(currentDir, "/home") != 0)
+        strcat(ans, currentDir);
+    else
+        strcat(ans, "~");
+    strcat(ans, "]> ");
+
+    free(hostname);
+    free(ans);
+    
+    return ans;
+}
+
 void changeDir(char* d){
     //printf("%s %s\n", "changeDir: ", d);
     //printf("HOME: %s\n", getenv("HOME"));
@@ -95,7 +160,6 @@ void changeDir(char* d){
     if(d == NULL){
         if(chdir(getenv("HOME")) == -1){
             printf("Invalid directory\n");
-            return_code = 1;
         }
         else
             prevDir = ".";
@@ -110,7 +174,7 @@ void changeDir(char* d){
         }
         else if(strcmp(d, "-") == 0){
             //if(indicaotr == .) 
-            chdir(prevDir);
+            chdir("-");
         }
         else if(d != NULL){
             chdir(d);

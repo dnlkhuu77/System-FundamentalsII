@@ -4,19 +4,22 @@
 #include <readline/history.h>
 
 /** The usage statement.*/
-const char* USAGE[8] = { 
-"These shell commands are defined internally. Type `help' to see this list.\n\n",
-"help\n",
-"exit\n",
-"cd\n",
-"pwd\n",
-"prt\n",
-"chpmt\n",
-"chclr\n"
+const char* USAGE[9] = { 
+	"SFISH Bash, v.1\n"
+	"These shell commands are defined internally. Type `help' to see this list.\n\n",
+	"help [-dms] [pattern ...]\n",
+	"exit [n]\n",
+	"cd [-L|[-P [-e]] [-@]] [dir]\n",
+	"pwd [-LP]\n",
+	"prt\n",
+	"chpmt\n",
+	"chclr\n"
 };
 
 void print_help();
 
-char* cmd_display(int, int);
+int doesFileExist(char*);
+
+char* cmd_display(int, int, int, int, int, int);
 
 void changeDir(char*);

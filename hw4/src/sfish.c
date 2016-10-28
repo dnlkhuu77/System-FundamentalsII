@@ -2,23 +2,38 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
-#define BLACK "\x1b[30m"
-#define RED "\x1b[31m"
-#define GREEN "\x1b[32m"
-#define YELLOW "\x1b[33m"
-#define BLUE "\x1b[34m"
-#define MAGENTA "\x1b[35m"
-#define CYAN "\x1b[36m"
-#define WHITE "\x1b[37m"
-#define RESET "\x1b[0m"
+#define RED "\e[0;31m"
+#define RED_B "\e[1;31m"
+#define BLUE "\e[0;34m"
+#define BLUE_B "\e[1;34m"
+#define GREEN "\e[0;32m"
+#define GREEN_B "\e[1;32m"
+#define YELLOW "\e[0;33m"
+#define YELLOW_B "\e[1;33m"
+#define CYAN "\e[0;36m"
+#define CYAN_B "\e[1;36m"
+#define MAGENTA "\e[0;35m"
+#define MAGENTA_B "\e[1;35m"
+#define BLACK "\e[0;30m"
+#define BLACK_B "\e[1;30m"
+#define WHITE "\e[0;37m"
+#define WHITE_B "\e[1;37m"
+#define RESET "\e[0m"
 
-int u_toggle, m_toggle = 1; //show both machine
-int child_status;
-char* userColor = NULL;
-char* machineColor = NULL;
-char* prevDir;
+int u_toggle = 1;
+int m_toggle = 1;
+int cursor_count = 0;
+int built_flag = -1;
+int u_color_toggle = -1;
+int u_bold_toggle = -1;
+int m_color_toggle = -1;
+int m_bold_toggle = -1;
+int child_status = 0;
+char* prevDir = NULL;
 char* shellDir;
+char* shellName;
 
 int main(int argc, char** argv) {
     //DO NOT MODIFY THIS. If you do you will get a ZERO.
@@ -28,13 +43,16 @@ int main(int argc, char** argv) {
 
     char* cmd;
     pid_t pid;
-    u_toggle = 1;
-    m_toggle = 1;
+    shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
 
-    while((cmd = readline(cmd_display(u_toggle, m_toggle))) != NULL){
+    while((cmd = readline(shellName)) != NULL){
         char* userInput = strtok(cmd, " ");
 
-        if(strcmp(userInput, "help") == 0){
+        if(userInput == NULL){
+            ;
+        }
+        else if(strcmp(userInput, "help") == 0){
+            built_flag = 0;
             pid = fork();
             if(pid == 0){
                 print_help();
@@ -44,6 +62,7 @@ int main(int argc, char** argv) {
                 waitpid(pid, &child_status, 0);
         }
         else if(strcmp(userInput, "exit") == 0){
+            built_flag = 0;
             exit(pid);
             break;
         }
@@ -51,27 +70,32 @@ int main(int argc, char** argv) {
             changeDir(strtok(NULL, " "));
         }
         else if(strcmp(userInput, "pwd") == 0){
+            built_flag = 0;
             pid = fork();
             if(pid == 0){
                 char* currentDir = getcwd(shellDir, 1024);
                 printf("%s\n", currentDir);
-                exit(3);
+                exit(pid);
             }
             else{
                 waitpid(pid, &child_status, 0);
             }
         }
-        else if(strcmp(userInput, "ptr") == 0){
+        else if(strcmp(userInput, "prt") == 0){
+            built_flag = 0;
             pid = fork();
             if(pid == 0){
-                printf("%d\n", child_status);
-                exit(3);
+                int s = WEXITSTATUS(child_status);
+                printf("%d\n", s);
+
+                exit(pid);
             }
             else{
                 waitpid(pid, &child_status, 0);
             }
         }
         else if(strcmp(userInput, "chpmt") == 0){
+            built_flag = 0;
             char* settings = strtok(NULL, " ");
             char* togg = strtok(NULL, " ");
 
@@ -86,11 +110,207 @@ int main(int argc, char** argv) {
                 else if(strcmp(togg, "0") == 0)
                     m_toggle = 0;
             }
-
         }
         else if(strcmp(userInput, "chclr") == 0){
-            printf("STUDD\n");
+            built_flag = 0;
+            char* settings = strtok(NULL, " ");
+            char* color = strtok(NULL, " ");
+            char* bold = strtok(NULL, " ");
+
+            if(strcmp(settings, "user") == 0){
+                if(strcmp(color, "red") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 1;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 1;
+                        u_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "blue") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 2;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 2;
+                        u_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "green") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 3;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 3;
+                        u_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "yellow") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 4;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 4;
+                        u_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "cyan") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 5;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 5;
+                        u_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "magneta") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 6;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 6;
+                        u_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "black") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 7;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 7;
+                        u_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "white") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        u_color_toggle = 8;
+                        u_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        u_color_toggle = 8;
+                        u_bold_toggle = 0;
+                    }
+                }
+            }
+            else if(strcmp(settings, "machine") == 0){
+                if(strcmp(color, "red") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 1;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 1;
+                        m_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "blue") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 2;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 2;
+                        m_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "green") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 3;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 3;
+                        m_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "yellow") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 4;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 4;
+                        m_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "cyan") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 5;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 5;
+                        m_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "magneta") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 6;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 6;
+                        m_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "black") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 7;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 7;
+                        m_bold_toggle = 0;
+                    }
+                }
+                else if(strcmp(color, "white") == 0){
+                    if(strcmp(bold, "1") == 0){
+                        m_color_toggle = 8;
+                        m_bold_toggle = 1;
+                    }else if(strcmp(bold, "0") == 0){
+                        m_color_toggle = 8;
+                        m_bold_toggle = 0;
+                    }
+                }
+            }
         }
+
+        //EXECUTABLES
+        if(built_flag != 0){
+            pid = fork();
+            if(pid == 0){
+                char* custom_arg[2] = {0};
+                custom_arg[0] = userInput;
+                custom_arg[1] = NULL;
+
+                //struct stat buff;
+                char* f_test = getenv("PATH");
+                char* att = strtok(f_test, ":"); //att is a path (or f_test)
+                char* y[1024] = {0};
+                y[0] = att;
+
+                for(int i =1; i < 1025; i++){
+                    y[i] = strtok(NULL, ":");
+
+                    if(y[i] == NULL)
+                        break;
+                }
+
+                char* g = malloc(1024);
+                for(int i = 0; i < 1024; i++){
+                    if(y[i] == NULL)
+                        break;
+
+                    strcpy(g, y[i]);
+                    strcat(g, "/");
+                    strcat(g, userInput);
+
+                    if(doesFileExist(g) == 0){
+                        execv(g, custom_arg);
+                        break;
+                    }
+                    memset(g, 0, sizeof(char));
+                }
+
+                exit(pid);
+            }
+            else
+                waitpid(pid, &child_status, 0);
+
+        }
+
 
         //All your debug print statments should be surrounded by this #ifdef
         //block. Use the debug target in the makefile to run with these enabled.
@@ -99,6 +319,7 @@ int main(int argc, char** argv) {
         #endif
         //You WILL lose points if your shell prints out garbage values.
 
+        shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
     }
 
     //Don't forget to free allocated memory, and close file descriptors.
@@ -110,42 +331,162 @@ int main(int argc, char** argv) {
 
 void print_help(){
     int j = 0;
-    for(j = 0; j < 8; j++){
+    for(j = 0; j < 9; j++){
         printf("%s\n", USAGE[j]);
     }
 }
 
-char* cmd_display(int u_togg, int m_togg){
+int doesFileExist(char* s){
+    struct stat buff;
+    int x = stat(s, &buff);
+    return x;
+
+}
+
+char* cmd_display(int u_togg, int m_togg, int uc_togg, int ub_togg, int mc_togg, int mb_togg){
     char* hostname = (char*) malloc(1024); //hostmachine is machine
     gethostname(hostname, 1023);
-    //char* hello = (char*) malloc(1024);
 
     char* hello = getenv("USER"); //hello is user
+    char* home = getenv("HOME");
     char* currentDir = getcwd(shellDir, 1024);
 
     char* ans = (char*) malloc(1024);
     
-    strcpy(ans,"sfish");
+    strcat(ans,"sfish");
+    cursor_count = cursor_count + 5;
 
     if(u_togg == 1){
         strcat(ans, "-");
+        cursor_count++;
+
+        if(uc_togg == 1){ //red
+            if(ub_togg == 0)
+                strcat(ans, RED);
+            else if(ub_togg == 1)
+                strcat(ans, RED_B);
+        }
+        else if(uc_togg == 2){ //blue
+            if(ub_togg == 0)
+                strcat(ans, BLUE);
+            else if(ub_togg == 1)
+                strcat(ans, BLUE_B);
+        }
+        else if(uc_togg == 3){ //green
+            if(ub_togg == 0)
+                strcat(ans, GREEN);
+            else if(ub_togg == 1)
+                strcat(ans, GREEN_B);
+        }
+        else if(uc_togg == 4){ //yellow
+            if(ub_togg == 0)
+                strcat(ans, YELLOW);
+            else if(ub_togg == 1)
+                strcat(ans, YELLOW_B);
+        }
+        else if(uc_togg == 5){ //cyan
+            if(ub_togg == 0)
+                strcat(ans, CYAN);
+            else if(ub_togg == 1)
+                strcat(ans, CYAN_B);
+        }
+        else if(uc_togg == 6){ //magneta
+            if(ub_togg == 0)
+                strcat(ans, MAGENTA);
+            else if(ub_togg == 1)
+                strcat(ans, MAGENTA_B);
+        }
+        else if(uc_togg == 7){ //black
+            if(ub_togg == 0)
+                strcat(ans, BLACK);
+            else if(ub_togg == 1)
+                strcat(ans, BLACK_B);
+        }
+        else if(uc_togg == 8){ //white
+            if(ub_togg == 0)
+                strcat(ans, WHITE);
+            else if(ub_togg == 1)
+                strcat(ans, WHITE_B);
+        }
+
         strcat(ans, hello);
+        cursor_count = cursor_count + strlen(hello);
+
+        if(uc_togg != -1 && ub_togg != -1)
+        strcat(ans, "\e[0m");
     }
 
-    if(u_togg == 1 && m_togg == 1)
+    if(u_togg == 1 && m_togg == 1){
         strcat(ans, "@");
+        cursor_count++;
+    }
 
     if(m_togg == 1){
-        strcat(ans, "-");
+        if(u_togg == 0)
+            strcat(ans, "-");
+        if(mc_togg == 1){ //red
+            if(mb_togg == 0)
+                strcat(ans, RED);
+            else if(mb_togg == 1)
+                strcat(ans, RED_B);
+        }
+        else if(mc_togg == 2){ //blue
+            if(mb_togg == 0)
+                strcat(ans, BLUE);
+            else if(mb_togg == 1)
+                strcat(ans, BLUE_B);
+        }
+        else if(mc_togg == 3){ //green
+            if(mb_togg == 0)
+                strcat(ans, GREEN);
+            else if(mb_togg == 1)
+                strcat(ans, GREEN_B);
+        }
+        else if(mc_togg == 4){ //yellow
+            if(mb_togg == 0)
+                strcat(ans, YELLOW);
+            else if(mb_togg == 1)
+                strcat(ans, YELLOW_B);
+        }
+        else if(mc_togg == 5){ //cyan
+            if(mb_togg == 0)
+                strcat(ans, CYAN);
+            else if(mb_togg == 1)
+                strcat(ans, CYAN_B);
+        }
+        else if(mc_togg == 6){ //magneta
+            if(mb_togg == 0)
+                strcat(ans, MAGENTA);
+            else if(mb_togg == 1)
+                strcat(ans, MAGENTA_B);
+        }
+        else if(mc_togg == 7){ //black
+            if(mb_togg == 0)
+                strcat(ans, BLACK);
+            else if(mb_togg == 1)
+                strcat(ans, BLACK_B);
+        }
+        else if(mc_togg == 8){ //white
+            if(mb_togg == 0)
+                strcat(ans, WHITE);
+            else if(mb_togg == 1)
+                strcat(ans, WHITE_B);
+        }
         strcat(ans, hostname);
+        cursor_count = cursor_count + strlen(hostname);
+
+        if(mc_togg != -1 && mb_togg != -1)
+            strcat(ans, "\e[0m");
     }
 
     strcat(ans, ":[");
-    if(strcmp(currentDir, "/home") != 0)
+    if(strcmp(currentDir, home) != 0)
         strcat(ans, currentDir);
     else
         strcat(ans, "~");
     strcat(ans, "]> ");
+    cursor_count = cursor_count + strlen(currentDir);
+    cursor_count = cursor_count + 6;
 
     free(hostname);
     free(ans);
@@ -154,29 +495,30 @@ char* cmd_display(int u_togg, int m_togg){
 }
 
 void changeDir(char* d){
-    //printf("%s %s\n", "changeDir: ", d);
-    //printf("HOME: %s\n", getenv("HOME"));
-
     if(d == NULL){
         if(chdir(getenv("HOME")) == -1){
             printf("Invalid directory\n");
         }
         else
-            prevDir = ".";
+            prevDir = getcwd(shellDir, 1024);
     }else{
         if(strcmp(d, ".") == 0){
-            prevDir = "shellDir";
+            prevDir = getcwd(shellDir, 1024);
             chdir(".");
         }
         else if(strcmp(d, "..") == 0){
-            prevDir = "shellDir";
+            prevDir = getcwd(shellDir, 1024);
             chdir("..");
         }
         else if(strcmp(d, "-") == 0){
-            //if(indicaotr == .) 
-            chdir("-");
+            if(prevDir != NULL)
+                chdir(prevDir);
+            else
+                printf(": OLDPWD not set\n");
+            prevDir = NULL;
         }
         else if(d != NULL){
+            prevDir = getcwd(shellDir, 1024);
             chdir(d);
         }
     }

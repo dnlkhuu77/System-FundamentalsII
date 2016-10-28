@@ -34,6 +34,9 @@ int child_status = 0;
 char* prevDir = NULL;
 char* shellDir;
 char* shellName;
+char* getting_arg;
+char * userInput[100];
+int arg_count = 0;
 
 int main(int argc, char** argv) {
     //DO NOT MODIFY THIS. If you do you will get a ZERO.
@@ -46,12 +49,29 @@ int main(int argc, char** argv) {
     shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
 
     while((cmd = readline(shellName)) != NULL){
-        char* userInput = strtok(cmd, " ");
+        arg_count = 0;
 
-        if(userInput == NULL){
+        getting_arg = strtok(cmd, " ");
+        userInput[0] = getting_arg;
+        for(int i = 1; i < 100; i++){
+            getting_arg = strtok(NULL, " ");
+            if(getting_arg != NULL){
+                userInput[i] = getting_arg;
+            }
+            else
+                break;
+        }
+        for(int i = 0; i < 100; i++){
+            if(userInput[i] != NULL)
+                arg_count++;
+        }
+
+        built_flag = -1;
+
+        if(userInput[0] == NULL){
             ;
         }
-        else if(strcmp(userInput, "help") == 0){
+        else if(strcmp(userInput[0], "help") == 0){
             built_flag = 0;
             pid = fork();
             if(pid == 0){
@@ -61,15 +81,16 @@ int main(int argc, char** argv) {
             else
                 waitpid(pid, &child_status, 0);
         }
-        else if(strcmp(userInput, "exit") == 0){
+        else if(strcmp(userInput[0], "exit") == 0){
             built_flag = 0;
             exit(pid);
             break;
         }
-        else if(strcmp(userInput, "cd") == 0){
-            changeDir(strtok(NULL, " "));
+        else if(strcmp(userInput[0], "cd") == 0){
+            changeDir(userInput[1]);
+            built_flag = 0;
         }
-        else if(strcmp(userInput, "pwd") == 0){
+        else if(strcmp(userInput[0], "pwd") == 0){
             built_flag = 0;
             pid = fork();
             if(pid == 0){
@@ -81,7 +102,7 @@ int main(int argc, char** argv) {
                 waitpid(pid, &child_status, 0);
             }
         }
-        else if(strcmp(userInput, "prt") == 0){
+        else if(strcmp(userInput[0], "prt") == 0){
             built_flag = 0;
             pid = fork();
             if(pid == 0){
@@ -94,12 +115,14 @@ int main(int argc, char** argv) {
                 waitpid(pid, &child_status, 0);
             }
         }
-        else if(strcmp(userInput, "chpmt") == 0){
+        else if(strcmp(userInput[0], "chpmt") == 0){
             built_flag = 0;
-            char* settings = strtok(NULL, " ");
-            char* togg = strtok(NULL, " ");
+            char* settings = userInput[1];
+            char* togg = userInput[2];
 
-            if(strcmp(settings, "user") == 0){
+            if(settings == NULL || togg == NULL)
+                ;
+            else if(strcmp(settings, "user") == 0){
                 if(strcmp(togg, "1") == 0)
                     u_toggle = 1;
                 else if(strcmp(togg, "0") == 0)
@@ -111,13 +134,15 @@ int main(int argc, char** argv) {
                     m_toggle = 0;
             }
         }
-        else if(strcmp(userInput, "chclr") == 0){
+        else if(strcmp(userInput[0], "chclr") == 0){
             built_flag = 0;
-            char* settings = strtok(NULL, " ");
-            char* color = strtok(NULL, " ");
-            char* bold = strtok(NULL, " ");
+            char* settings = userInput[1];
+            char* color = userInput[2];
+            char* bold = userInput[3];
 
-            if(strcmp(settings, "user") == 0){
+            if(settings == NULL || color == NULL || bold == NULL)
+                ;
+            else if(strcmp(settings, "user") == 0){
                 if(strcmp(color, "red") == 0){
                     if(strcmp(bold, "1") == 0){
                         u_color_toggle = 1;
@@ -271,17 +296,19 @@ int main(int argc, char** argv) {
         if(built_flag != 0){
             pid = fork();
             if(pid == 0){
-                char* custom_arg[2] = {0};
-                custom_arg[0] = userInput;
-                custom_arg[1] = NULL;
+                char* custom_arg[arg_count + 1];
+                memset(custom_arg, 0, arg_count);
+                for(int i = 0; i < arg_count; i++){
+                    custom_arg[i] = userInput[i];
+                }
+                custom_arg[arg_count] = NULL;
 
-                //struct stat buff;
                 char* f_test = getenv("PATH");
                 char* att = strtok(f_test, ":"); //att is a path (or f_test)
                 char* y[1024] = {0};
                 y[0] = att;
 
-                for(int i =1; i < 1025; i++){
+                for(int i =1; i < 1025; i++){ //getting the paths from the PATH string into an array
                     y[i] = strtok(NULL, ":");
 
                     if(y[i] == NULL)
@@ -289,13 +316,19 @@ int main(int argc, char** argv) {
                 }
 
                 char* g = malloc(1024);
+
+                if(doesFileExist(userInput[0]) == 0){ //if it already has the /
+                        execv(userInput[0], custom_arg);
+                        break;
+                }
+
                 for(int i = 0; i < 1024; i++){
                     if(y[i] == NULL)
                         break;
 
                     strcpy(g, y[i]);
                     strcat(g, "/");
-                    strcat(g, userInput);
+                    strcat(g, userInput[0]);
 
                     if(doesFileExist(g) == 0){
                         execv(g, custom_arg);
@@ -303,7 +336,7 @@ int main(int argc, char** argv) {
                     }
                     memset(g, 0, sizeof(char));
                 }
-
+                free(g);
                 exit(pid);
             }
             else
@@ -319,6 +352,9 @@ int main(int argc, char** argv) {
         #endif
         //You WILL lose points if your shell prints out garbage values.
 
+        for(int i = 0; i < 100; i++){
+            userInput[i] = NULL;
+        }
         shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
     }
 

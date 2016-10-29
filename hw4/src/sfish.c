@@ -298,13 +298,16 @@ int main(int argc, char** argv) {
             if(pid == 0){
                 char* custom_arg[arg_count + 1];
                 memset(custom_arg, 0, arg_count);
+                //do a flag to skip this loop for output direction
                 for(int i = 0; i < arg_count; i++){
                     custom_arg[i] = userInput[i];
                 }
                 custom_arg[arg_count] = NULL;
 
                 char* f_test = getenv("PATH");
-                char* att = strtok(f_test, ":"); //att is a path (or f_test)
+                char* test = calloc(1024, sizeof(char));
+                strcpy(test, f_test);
+                char* att = strtok(test, ":"); //att is a path (or f_test)
                 char* y[1024] = {0};
                 y[0] = att;
 
@@ -318,8 +321,8 @@ int main(int argc, char** argv) {
                 char* g = malloc(1024);
 
                 if(doesFileExist(userInput[0]) == 0){ //if it already has the /
-                        execv(userInput[0], custom_arg);
-                        break;
+                    execv(userInput[0], custom_arg);
+                    break;
                 }
 
                 for(int i = 0; i < 1024; i++){
@@ -337,11 +340,11 @@ int main(int argc, char** argv) {
                     memset(g, 0, sizeof(char));
                 }
                 free(g);
+                free(test);
                 exit(pid);
             }
             else
                 waitpid(pid, &child_status, 0);
-
         }
 
 
@@ -381,7 +384,7 @@ int doesFileExist(char* s){
 
 char* cmd_display(int u_togg, int m_togg, int uc_togg, int ub_togg, int mc_togg, int mb_togg){
     char* hostname = (char*) malloc(1024); //hostmachine is machine
-    gethostname(hostname, 1023);
+    gethostname(hostname, 1024);
 
     char* hello = getenv("USER"); //hello is user
     char* home = getenv("HOME");

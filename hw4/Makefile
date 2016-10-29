@@ -30,5 +30,5 @@ $(EXEC): $(_OBJF)
 $(BLDD)/%.o: $(SRCD)/%.c
 	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
-clean: reset
+clean:
 	$(RM) -r $(BLDD) $(BIND)

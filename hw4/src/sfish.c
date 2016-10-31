@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #define RED "\e[0;31m"
 #define RED_B "\e[1;31m"
@@ -462,7 +463,36 @@ int doesFileExist(char* s){
 }
 
 void redirection(char** rere){
-
+    for(int i = 0; i < 100; i++){
+        if(rere[i] != NULL){
+            int n = atoi(rere[i]);
+            if(n != 0){
+                if(strcmp(rere[i+1], ">") == 0){
+                    int output = open(rere[i+2], O_WRONLY | O_TRUNC | O_CREAT, 0666);
+                    dup2(output, n);
+                    i = i + 2;
+                    close(output);
+                }else if(strcmp(rere[i + 1], "<") == 0){
+                    int input = open(rere[i+2], O_RDONLY);
+                    dup2(input, n);
+                    i = i + 2;
+                    close(input);
+                }
+            }
+            else if(strcmp(rere[i], ">") == 0){
+                int output = open(rere[i+1], O_WRONLY | O_TRUNC | O_CREAT, 0666);
+                dup2(output, 1);
+                i++;
+                close(output);
+            }
+            else if(strcmp(rere[i], "<") == 0){
+                int input = open(rere[i+1], O_RDONLY);
+                dup2(input, 0);
+                i++;
+                close(input);
+            }
+        }
+    }
 }
 
 char* cmd_display(int u_togg, int m_togg, int uc_togg, int ub_togg, int mc_togg, int mb_togg){

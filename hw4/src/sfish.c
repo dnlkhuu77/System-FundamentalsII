@@ -69,8 +69,8 @@ int main(int argc, char** argv) {
 
         //must detect the "<", ">", "|"
         //even if the < is part of the string
-        int k = 0;
-        char chhold;
+        int a = 0;
+        char char_hold;
         char* chptr;
         char* parse_args = calloc(1024, sizeof(char));
         char* rere[100]; //rere is an array of strings
@@ -81,24 +81,24 @@ int main(int argc, char** argv) {
                 for(int j = 0; j < strlen(userInput[i]); j++){ //go through each letter in the word
                     if(userInput[i][j] == '<' || userInput[i][j] == '>' || userInput[i][j] == '|'){
                         if(parse_args != '\000'){
-                            rere[k++] = strdup(parse_args);
+                            rere[a++] = strdup(parse_args);
                             memset(parse_args, '\0', 1024);
                         }
-                        chhold = userInput[i][j];
-                        chptr = &chhold;
-                        rere[k++] = chptr;
+                        char_hold = userInput[i][j];
+                        chptr = &char_hold;
+                        rere[a++] = chptr;
 
                     }else{
                         //build the string
                         if(userInput[i][j] != ' ')
-                            chhold = userInput[i][j];
-                        chptr = &chhold;
+                            char_hold = userInput[i][j];
+                        chptr = &char_hold;
                         strcat(parse_args, chptr);
                     }
                 }
                 //put the string into the main array
                 if(parse_args[0] != '\000'){
-                    rere[k++] = strdup(parse_args);
+                    rere[a++] = strdup(parse_args);
                     memset(parse_args, '\0', 1024);
                 }
             }

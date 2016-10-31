@@ -80,13 +80,15 @@ int main(int argc, char** argv) {
             if(userInput[i] != NULL){
                 for(int j = 0; j < strlen(userInput[i]); j++){ //go through each letter in the word
                     if(userInput[i][j] == '<' || userInput[i][j] == '>' || userInput[i][j] == '|'){
-                        if(parse_args != '\000'){
+                        if(parse_args[0] != '\000'){
                             rere[a++] = strdup(parse_args);
                             memset(parse_args, '\0', 1024);
                         }
-                        char_hold = userInput[i][j];
+                        char_hold = userInput[i][j]; //put in the <, >, |
                         chptr = &char_hold;
-                        rere[a++] = chptr;
+                        strcat(parse_args, chptr);
+                        rere[a++] = strdup(parse_args);
+                        memset(parse_args, '\0', 1024);
 
                     }else{
                         //build the string
@@ -110,6 +112,9 @@ int main(int argc, char** argv) {
                 arg_count++;
         }
 
+        for(int i = 0; i < arg_count; i++)
+            printf("RERE %d %s\n", i, rere[i]);
+
         memset(userInput, '\0', 100);
         int j = 0;
 
@@ -129,6 +134,10 @@ int main(int argc, char** argv) {
                 arg_count++;
         }
 
+        int s_stdin = dup(0);
+        int s_stdout = dup(1);
+        int s_stderr = dup(2);
+        redirection(rere);
 
         built_flag = -1;
 
@@ -428,6 +437,9 @@ int main(int argc, char** argv) {
         for(int i = 0; i < 100; i++){
             userInput[i] = NULL;
         }
+        dup2(s_stdin, 0);
+        dup2(s_stdout, 1);
+        dup2(s_stderr, 2);
         shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
     }
 
@@ -449,6 +461,10 @@ int doesFileExist(char* s){
     struct stat buff;
     int x = stat(s, &buff);
     return x;
+
+}
+
+void redirection(char** rere){
 
 }
 

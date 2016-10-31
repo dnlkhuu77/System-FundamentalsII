@@ -26,6 +26,7 @@ int u_toggle = 1;
 int m_toggle = 1;
 int cursor_count = 0;
 int built_flag = -1;
+int b_flag = -1;
 int u_color_toggle = -1;
 int u_bold_toggle = -1;
 int m_color_toggle = -1;
@@ -65,6 +66,69 @@ int main(int argc, char** argv) {
             if(userInput[i] != NULL)
                 arg_count++;
         }
+
+        //must detect the "<", ">", "|"
+        //even if the < is part of the string
+        int k = 0;
+        char chhold;
+        char* chptr;
+        char* parse_args = calloc(1024, sizeof(char));
+        char* rere[100]; //rere is an array of strings
+        memset(rere, '\0', 100);
+
+        for(int i = 0; i < arg_count; i++){ //go through each word
+            if(userInput[i] != NULL){
+                for(int j = 0; j < strlen(userInput[i]); j++){ //go through each letter in the word
+                    if(userInput[i][j] == '<' || userInput[i][j] == '>' || userInput[i][j] == '|'){
+                        if(parse_args != '\000'){
+                            rere[k++] = strdup(parse_args);
+                            memset(parse_args, '\0', 1024);
+                        }
+                        chhold = userInput[i][j];
+                        chptr = &chhold;
+                        rere[k++] = chptr;
+
+                    }else{
+                        //build the string
+                        if(userInput[i][j] != ' ')
+                            chhold = userInput[i][j];
+                        chptr = &chhold;
+                        strcat(parse_args, chptr);
+                    }
+                }
+                //put the string into the main array
+                if(parse_args[0] != '\000'){
+                    rere[k++] = strdup(parse_args);
+                    memset(parse_args, '\0', 1024);
+                }
+            }
+        }
+
+        arg_count = 0;
+        for(int i = 0; i < 100; i++){
+            if(rere[i] != NULL)
+                arg_count++;
+        }
+
+        memset(userInput, '\0', 100);
+        int j = 0;
+
+        for(int i = 0; i < arg_count; i++){
+            int n = atoi(rere[i]);
+            if(n != 0)
+                break;
+            else if(strcmp(rere[i], "<") == 0|| strcmp(rere[i], ">") == 0 || strcmp(rere[i], "|") == 0)
+                break;
+            else{
+                userInput[j++] = strdup(rere[i]);
+            }
+        }
+        arg_count = 0;
+        for(int i = 0; i < 100; i++){
+            if(userInput[i] != NULL)
+                arg_count++;
+        }
+
 
         built_flag = -1;
 
@@ -296,6 +360,7 @@ int main(int argc, char** argv) {
         if(built_flag != 0){
             pid = fork();
             if(pid == 0){
+                b_flag = -1;
                 char* custom_arg[arg_count + 1];
                 memset(custom_arg, 0, arg_count);
                 //do a flag to skip this loop for output direction
@@ -322,6 +387,7 @@ int main(int argc, char** argv) {
 
                 if(doesFileExist(userInput[0]) == 0){ //if it already has the /
                     execv(userInput[0], custom_arg);
+                    b_flag = 0;
                     break;
                 }
 
@@ -335,10 +401,14 @@ int main(int argc, char** argv) {
 
                     if(doesFileExist(g) == 0){
                         execv(g, custom_arg);
+                        b_flag = 0;
                         break;
                     }
                     memset(g, 0, sizeof(char));
                 }
+
+                if(b_flag != 0)
+                    fprintf(stderr, "%s: command not found \n", userInput[0]);
                 free(g);
                 free(test);
                 exit(pid);
@@ -535,11 +605,10 @@ char* cmd_display(int u_togg, int m_togg, int uc_togg, int ub_togg, int mc_togg,
 
 void changeDir(char* d){
     if(d == NULL){
+        prevDir = getcwd(shellDir, 1024);
         if(chdir(getenv("HOME")) == -1){
-            printf("Invalid directory\n");
+            fprintf(stderr, "cd: %s: No such file or directory\n", d);
         }
-        else
-            prevDir = getcwd(shellDir, 1024);
     }else{
         if(strcmp(d, ".") == 0){
             prevDir = getcwd(shellDir, 1024);

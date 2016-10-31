@@ -20,6 +20,8 @@ void print_help();
 
 int doesFileExist(char*);
 
+void outputredirect(char**);
+
 char* cmd_display(int, int, int, int, int, int);
 
 void changeDir(char*);

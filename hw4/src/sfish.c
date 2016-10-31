@@ -112,9 +112,6 @@ int main(int argc, char** argv) {
                 arg_count++;
         }
 
-        for(int i = 0; i < arg_count; i++)
-            printf("RERE %d %s\n", i, rere[i]);
-
         memset(userInput, '\0', 100);
         int j = 0;
 

@@ -3,6 +3,11 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+ typedef struct Assign{
+ 	char** args;
+ 	struct Assign *next;
+ } Assign;
+
 /** The usage statement.*/
 const char* USAGE[9] = { 
 	"SFISH Bash, v.1\n"
@@ -20,7 +25,13 @@ void print_help();
 
 int doesFileExist(char*);
 
-void outputredirect(char**);
+void redirection(char**);
+
+void making_linked(Assign*, char**);
+
+char** remove_pipe(char**);
+
+void piping_action(Assign*, int);
 
 char* cmd_display(int, int, int, int, int, int);
 

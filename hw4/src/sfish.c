@@ -1,5 +1,6 @@
 #include "sfish.h"
 #include <unistd.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -37,8 +38,9 @@ char* prevDir = NULL;
 char* shellDir;
 char* shellName;
 char* getting_arg;
-char * userInput[100];
+char* userInput[PATH_MAX + 1];
 int arg_count = 0;
+int pipes = 0;
 
 int main(int argc, char** argv) {
     //DO NOT MODIFY THIS. If you do you will get a ZERO.
@@ -52,6 +54,7 @@ int main(int argc, char** argv) {
 
     while((cmd = readline(shellName)) != NULL){
         arg_count = 0;
+        pipes = 0;
 
         getting_arg = strtok(cmd, " ");
         userInput[0] = getting_arg;
@@ -85,6 +88,8 @@ int main(int argc, char** argv) {
                             rere[a++] = strdup(parse_args);
                             memset(parse_args, '\0', 1024);
                         }
+                        if(userInput[i][j] == '|')
+                            pipes++;
                         char_hold = userInput[i][j]; //put in the <, >, |
                         chptr = &char_hold;
                         strcat(parse_args, chptr);
@@ -120,8 +125,11 @@ int main(int argc, char** argv) {
             int n = atoi(rere[i]);
             if(n != 0)
                 break;
-            else if(strcmp(rere[i], "<") == 0|| strcmp(rere[i], ">") == 0 || strcmp(rere[i], "|") == 0)
+            else if(strcmp(rere[i], "<") == 0|| strcmp(rere[i], ">") == 0)
                 break;
+            else if(strcmp(rere[i], "|") == 0){
+                break;
+            }
             else{
                 userInput[j++] = strdup(rere[i]);
             }
@@ -135,7 +143,18 @@ int main(int argc, char** argv) {
         int s_stdin = dup(0);
         int s_stdout = dup(1);
         int s_stderr = dup(2);
-        redirection(rere);
+
+        if(pipes > 0){
+            Assign* head = NULL;
+            head = malloc(sizeof(Assign));
+            making_linked(head, rere);
+            piping_action(head, pipes);
+            shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
+            continue;
+        }
+
+        if(pipes == 0)
+            redirection(rere);
 
         built_flag = -1;
 
@@ -370,7 +389,7 @@ int main(int argc, char** argv) {
                 b_flag = -1;
                 char* custom_arg[arg_count + 1];
                 memset(custom_arg, 0, arg_count);
-                //do a flag to skip this loop for output direction
+
                 for(int i = 0; i < arg_count; i++){
                     custom_arg[i] = userInput[i];
                 }
@@ -414,8 +433,10 @@ int main(int argc, char** argv) {
                     memset(g, 0, sizeof(char));
                 }
 
-                if(b_flag != 0)
+                if(b_flag != 0){
                     fprintf(stderr, "%s: command not found \n", userInput[0]);
+                    exit(127);
+                }
                 free(g);
                 free(test);
                 exit(pid);
@@ -423,14 +444,6 @@ int main(int argc, char** argv) {
             else
                 waitpid(pid, &child_status, 0);
         }
-
-
-        //All your debug print statments should be surrounded by this #ifdef
-        //block. Use the debug target in the makefile to run with these enabled.
-        #ifdef DEBUG
-        fprintf(stderr, "Length of command entered: %ld\n", strlen(cmd));
-        #endif
-        //You WILL lose points if your shell prints out garbage values.
 
         for(int i = 0; i < 100; i++){
             userInput[i] = NULL;
@@ -479,20 +492,143 @@ void redirection(char** rere){
                     close(input);
                 }
             }
-            else if(strcmp(rere[i], ">") == 0){
-                int output = open(rere[i+1], O_WRONLY | O_TRUNC | O_CREAT, 0666);
-                dup2(output, 1);
-                i++;
-                close(output);
-            }
             else if(strcmp(rere[i], "<") == 0){
                 int input = open(rere[i+1], O_RDONLY);
                 dup2(input, 0);
                 i++;
                 close(input);
             }
+            else if(strcmp(rere[i], ">") == 0){
+                int output = open(rere[i+1], O_WRONLY | O_TRUNC | O_CREAT, 0666);
+                dup2(output, 1);
+                i++;
+                close(output);
+            }
         }
     }
+}
+
+void making_linked(Assign* head, char** rere){
+    Assign* current = head;
+    current->args = malloc(1024);
+    int a = 0;
+
+    for(int i = 0; i < sizeof(rere); i++){
+        if(rere[i] != NULL){
+            if(strcmp(rere[i], "|") == 0){
+                current->next = malloc(1024);
+                current = current->next;
+                current->args = malloc(1024);
+                a = 0;
+            }else{
+                current->args[a] = strdup(rere[i]);
+                a++;
+            }
+        }else{
+            current->args[a] = NULL;
+            a++;
+        }
+    }
+}
+
+void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, {stuff}
+    pid_t pid;
+    //printf("PIPES COUNT: %d\n", pipes);
+    Assign* current = head;
+    char** rere = malloc(1024);
+
+    int pipe_fds[2*pipes];
+
+    for(int j = 0; j < pipes; j++){
+        if(pipe(pipe_fds + j*2) < 0)
+            exit(EXIT_FAILURE);
+    }
+
+    int j = 0;
+    while(current){
+        pid = fork();
+        if(pid == 0){
+            if(current->next){ //if this is NOT the last command
+                if(dup2(pipe_fds[j+1], STDOUT_FILENO) < 0){
+                    exit(EXIT_FAILURE);
+                }
+            }
+            if(j != 0){
+                if(dup2(pipe_fds[j-2], STDIN_FILENO) < 0){
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            for(int i = 0; i < 2*pipes; i++){
+                close(pipe_fds[i]);
+            }
+
+            //redirection(current->args);
+            rere = remove_pipe(current->args);
+
+            char* en = calloc(1024, sizeof(char));
+            char* env = getenv("PATH");
+            strcpy(en, env);
+
+            char* path = strtok(en, ":");
+            char* c_path = calloc(1024, sizeof(char));
+            char** paths = (char**) calloc(1024, sizeof(char*));
+            int a = 0;
+            int b = 0;
+
+            while(path != NULL){
+                paths[a] = path;
+                path = strtok(NULL, ":");
+                a++;
+                b++;
+            }
+
+            if(doesFileExist(rere[0]) == 0){
+                execvp(rere[0], rere);
+                exit(EXIT_FAILURE);
+            }else{
+                for(int i = 0; i < b; i++){
+                    if(paths[i] != NULL){
+                        strcat(c_path, paths[i]);
+                        strcat(c_path, "/");
+                        strcat(c_path, rere[0]);
+                        if(doesFileExist(c_path) == 0)
+                            execvp(c_path, rere);
+                        memset(c_path, '\0', 1024);
+                    }
+                }
+            }
+        }
+        else if(pid < 0){
+            exit(EXIT_FAILURE);
+        }
+        current = current->next;
+        j = j + 2;
+    }
+    for(int i = 0; i <2*pipes; i++)
+        close(pipe_fds[i]);
+    for(int i = 0; i < pipes+1; i++)
+        waitpid(pid, &child_status, 0);
+}
+
+char** remove_pipe(char** rere){
+    int j = 0;
+    char** removed = calloc(1024, sizeof(char*));
+
+    for(int i = 0; i < sizeof(rere); i++){
+        if(rere[i] != NULL){
+            int n = atoi(rere[i]);
+            if(n != 0){
+                if(rere[i+1] == '\000')
+                    removed[j++] = rere[i];
+            }
+            else if(strcmp(rere[i], ">") == 0 || strcmp(rere[i], "<") == 0 || strcmp(rere[i], "|") == 0)
+                break;
+            else
+                removed[j++] = rere[i];
+        }
+    }
+    return removed;
 }
 
 char* cmd_display(int u_togg, int m_togg, int uc_togg, int ub_togg, int mc_togg, int mb_togg){

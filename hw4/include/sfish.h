@@ -30,8 +30,6 @@ void redirection(char**);
 
 void making_linked(Assign*, char**);
 
-char** remove_pipe(char**);
-
 void piping_action(Assign*, int);
 
 char* cmd_display(int, int, int, int, int, int);

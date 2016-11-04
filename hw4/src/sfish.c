@@ -37,7 +37,6 @@ int child_status = 0;
 char* prevDir = NULL;
 char* shellDir;
 char* shellName;
-char* getting_arg;
 char* userInput[PATH_MAX + 1];
 int arg_count = 0;
 int pipes = 0;
@@ -49,14 +48,20 @@ int main(int argc, char** argv) {
     //to install your own.
 
     char* cmd;
-    pid_t pid;
     shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
 
     while((cmd = readline(shellName)) != NULL){
         arg_count = 0;
+        pid_t pid;
         pipes = 0;
+        int a = 0;
+        char char_hold;
+        char* ptr_hold;
+        char* rere[100];
+        memset(rere, '\0', 100);
+        char* parse_args = calloc(1024, sizeof(char));
 
-        getting_arg = strtok(cmd, " ");
+        char* getting_arg = strtok(cmd, " ");
         userInput[0] = getting_arg;
         for(int i = 1; i < 100; i++){
             getting_arg = strtok(NULL, " ");
@@ -73,13 +78,6 @@ int main(int argc, char** argv) {
 
         //must detect the "<", ">", "|"
         //even if the < is part of the string
-        int a = 0;
-        char char_hold;
-        char* chptr;
-        char* rere[100];
-        memset(rere, '\0', 100);
-        char* parse_args = calloc(1024, sizeof(char));
-
         for(int i = 0; i < arg_count; i++){ //go through each word
             if(userInput[i] != NULL){
                 for(int j = 0; j < strlen(userInput[i]); j++){ //go through each letter in the word
@@ -92,23 +90,25 @@ int main(int argc, char** argv) {
                         if(userInput[i][j] == '|')
                             pipes++;
                         char_hold = userInput[i][j]; //put in the <, >, |
-                        chptr = &char_hold;
-                        strcat(parse_args, chptr);
-                        rere[a++] = strdup(parse_args);
+                        ptr_hold = &char_hold;
+                        strcat(parse_args, ptr_hold);
+                        rere[a] = strdup(parse_args);
+                        a++;
                         memset(parse_args, '\0', 1024);
 
                     }else{
                         //build the string
                         if(userInput[i][j] != ' ')
                             char_hold = userInput[i][j];
-                        chptr = &char_hold;
-                        strcat(parse_args, chptr);
+                        ptr_hold = &char_hold;
+                        strcat(parse_args, ptr_hold);
                     }
                 }
                 //put the string into the main array
                 if(parse_args[0] != '\000'){
-                    rere[a++] = strdup(parse_args);
+                    rere[a] = strdup(parse_args);
                     memset(parse_args, '\0', 1024);
+                    a++;
                 }
             }
         }
@@ -132,7 +132,8 @@ int main(int argc, char** argv) {
                 break;
             }
             else{
-                userInput[j++] = strdup(rere[i]);
+                userInput[j] = strdup(rere[i]);
+                j++;
             }
         }
         arg_count = 0;
@@ -145,8 +146,21 @@ int main(int argc, char** argv) {
             Assign* head = NULL;
             head = malloc(sizeof(Assign));
             making_linked(head, rere);
+
+            /*Assign* butt = head;
+            
+            while(butt != NULL){
+                if(butt->args[1] != NULL)
+                   printf("LS: %s\n", butt->args[1]);
+                butt = butt->next;
+            }*/
             piping_action(head, pipes);
+            for(int i = 0; i < 100; i++){
+                userInput[i] = NULL;
+            }
+            free(parse_args);
             shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
+            built_flag = 0;
             continue;
         }
 
@@ -156,7 +170,7 @@ int main(int argc, char** argv) {
 
         if(pipes == 0)
             redirection(rere);
-
+            
         built_flag = -1;
 
         if(userInput[0] == NULL){
@@ -440,7 +454,7 @@ int main(int argc, char** argv) {
                 }
                 free(g);
                 free(test);
-                exit(pid);
+                exit(0);
             }
             else
                 waitpid(pid, &child_status, 0);
@@ -452,6 +466,7 @@ int main(int argc, char** argv) {
         dup2(s_stdin, 0);
         dup2(s_stdout, 1);
         dup2(s_stderr, 2);
+        free(parse_args);
         shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
     }
 
@@ -522,9 +537,16 @@ void redirection(char** rere){
 }
 
 void making_linked(Assign* head, char** rere){
+
+    // int i = 0;
+    //         while(rere[i] != NULL){
+    //             printf("IN FUCNTION: %s\n", rere[i]);
+    //             i++;
+    //         }
+    //         printf("I is: %d\n", i);
+    int a = 0;
     Assign* current = head;
     current->args = malloc(1024);
-    int a = 0;
 
     for(int i = 0; i < 100; i++){
         if(rere[i] != NULL){
@@ -548,7 +570,6 @@ void making_linked(Assign* head, char** rere){
 
 void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, {stuff}
     pid_t pid;
-    //printf("PIPES COUNT: %d\n", pipes);
     Assign* current = head;
     char** rere = malloc(1024);
 
@@ -574,12 +595,34 @@ void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, 
                 }
             }
 
-            for(int i = 0; i < 2*pipes; i++){
+            for(int i = 0; i < (2*pipes); i++){
                 close(pipe_fds[i]);
             }
 
             redirection(current->args);
-            rere = remove_pipe(current->args);
+            
+            int b = 0;
+            char** removed = calloc(1024, sizeof(char*));
+            char** imm = current->args;
+
+            for(int i = 0; i < 100; i++){
+                if(imm[i] != NULL){
+                    int n = atoi(imm[i]);
+                    if(n != 0){
+                        if(imm[i+1] == '\000'){
+                            removed[b] = imm[i];
+                            b++;
+                        }
+                    }
+                    else if(strcmp(imm[i], ">") == 0 || strcmp(imm[i], "<") == 0 || strcmp(imm[i], "|") == 0)
+                        break;
+                    else{
+                        removed[b] = imm[i];
+                        b++;
+                    }
+                }
+            }
+            rere = removed;
 
             char* f_test = getenv("PATH");
             char* test = calloc(1024, sizeof(char));
@@ -624,26 +667,7 @@ void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, 
         close(pipe_fds[i]);
     for(int i = 0; i < pipes+1; i++)
         waitpid(pid, &child_status, 0);
-}
-
-char** remove_pipe(char** rere){
-    int j = 0;
-    char** removed = calloc(1024, sizeof(char*));
-
-    for(int i = 0; i < 100; i++){
-        if(rere[i] != NULL){
-            int n = atoi(rere[i]);
-            if(n != 0){
-                if(rere[i+1] == '\000')
-                    removed[j++] = rere[i];
-            }
-            else if(strcmp(rere[i], ">") == 0 || strcmp(rere[i], "<") == 0 || strcmp(rere[i], "|") == 0)
-                break;
-            else
-                removed[j++] = rere[i];
-        }
-    }
-    return removed;
+    free(rere);
 }
 
 char* cmd_display(int u_togg, int m_togg, int uc_togg, int ub_togg, int mc_togg, int mb_togg){
@@ -792,7 +816,7 @@ char* cmd_display(int u_togg, int m_togg, int uc_togg, int ub_togg, int mc_togg,
     cursor_count = cursor_count + 6;
 
     free(hostname);
-    free(ans);
+    //free(ans);
     
     return ans;
 }

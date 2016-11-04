@@ -33,6 +33,7 @@ int u_color_toggle = -1;
 int u_bold_toggle = -1;
 int m_color_toggle = -1;
 int m_bold_toggle = -1;
+int long_child = 0;
 int child_status = 0;
 char* prevDir = NULL;
 char* shellDir;
@@ -48,9 +49,11 @@ int main(int argc, char** argv) {
     //to install your own.
 
     char* cmd;
+    //pid_t long_pid;
     shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
 
     while((cmd = readline(shellName)) != NULL){
+
         arg_count = 0;
         pid_t pid;
         pipes = 0;
@@ -123,10 +126,7 @@ int main(int argc, char** argv) {
         int j = 0;
 
         for(int i = 0; i < arg_count; i++){
-            int n = atoi(rere[i]);
-            if(n != 0)
-                break;
-            else if(strcmp(rere[i], "<") == 0|| strcmp(rere[i], ">") == 0)
+            if(strcmp(rere[i], "<") == 0|| strcmp(rere[i], ">") == 0)
                 break;
             else if(strcmp(rere[i], "|") == 0){
                 break;
@@ -238,6 +238,9 @@ int main(int argc, char** argv) {
                 else if(strcmp(togg, "0") == 0)
                     m_toggle = 0;
             }
+            else{
+                fprintf(stderr, "This is not a valid command.\n");
+            }
         }
         else if(strcmp(userInput[0], "chclr") == 0){
             built_flag = 0;
@@ -320,6 +323,9 @@ int main(int argc, char** argv) {
                         u_bold_toggle = 0;
                     }
                 }
+                else{
+                    fprintf(stderr, "This is not a valid command\n");
+                }
             }
             else if(strcmp(settings, "machine") == 0){
                 if(strcmp(color, "red") == 0){
@@ -393,6 +399,9 @@ int main(int argc, char** argv) {
                         m_color_toggle = 8;
                         m_bold_toggle = 0;
                     }
+                }
+                else{
+                    fprintf(stderr, "This is not a valid command\n");
                 }
             }
         }

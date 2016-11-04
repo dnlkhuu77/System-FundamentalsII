@@ -76,17 +76,18 @@ int main(int argc, char** argv) {
         int a = 0;
         char char_hold;
         char* chptr;
-        char* parse_args = calloc(1024, sizeof(char));
-        char* rere[100]; //rere is an array of strings
+        char* rere[100];
         memset(rere, '\0', 100);
+        char* parse_args = calloc(1024, sizeof(char));
 
         for(int i = 0; i < arg_count; i++){ //go through each word
             if(userInput[i] != NULL){
                 for(int j = 0; j < strlen(userInput[i]); j++){ //go through each letter in the word
                     if(userInput[i][j] == '<' || userInput[i][j] == '>' || userInput[i][j] == '|'){
                         if(parse_args[0] != '\000'){
-                            rere[a++] = strdup(parse_args);
+                            rere[a] = strdup(parse_args);
                             memset(parse_args, '\0', 1024);
+                            a++;
                         }
                         if(userInput[i][j] == '|')
                             pipes++;
@@ -140,10 +141,6 @@ int main(int argc, char** argv) {
                 arg_count++;
         }
 
-        int s_stdin = dup(0);
-        int s_stdout = dup(1);
-        int s_stderr = dup(2);
-
         if(pipes > 0){
             Assign* head = NULL;
             head = malloc(sizeof(Assign));
@@ -152,6 +149,10 @@ int main(int argc, char** argv) {
             shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
             continue;
         }
+
+        int s_stdin = dup(0);
+        int s_stdout = dup(1);
+        int s_stderr = dup(2);
 
         if(pipes == 0)
             redirection(rere);
@@ -166,14 +167,14 @@ int main(int argc, char** argv) {
             pid = fork();
             if(pid == 0){
                 print_help();
-                exit(pid);
+                exit(0);
             }
             else
                 waitpid(pid, &child_status, 0);
         }
         else if(strcmp(userInput[0], "exit") == 0){
             built_flag = 0;
-            exit(pid);
+            exit(0);
             break;
         }
         else if(strcmp(userInput[0], "cd") == 0){
@@ -186,7 +187,7 @@ int main(int argc, char** argv) {
             if(pid == 0){
                 char* currentDir = getcwd(shellDir, 1024);
                 printf("%s\n", currentDir);
-                exit(pid);
+                exit(0);
             }
             else{
                 waitpid(pid, &child_status, 0);
@@ -199,7 +200,7 @@ int main(int argc, char** argv) {
                 int s = WEXITSTATUS(child_status);
                 printf("%d\n", s);
 
-                exit(pid);
+                exit(0);
             }
             else{
                 waitpid(pid, &child_status, 0);
@@ -402,7 +403,7 @@ int main(int argc, char** argv) {
                 char* y[1024] = {0};
                 y[0] = att;
 
-                for(int i =1; i < 1025; i++){ //getting the paths from the PATH string into an array
+                for(int i =1; i < 1024; i++){ //getting the paths from the PATH string into an array
                     y[i] = strtok(NULL, ":");
 
                     if(y[i] == NULL)
@@ -455,7 +456,7 @@ int main(int argc, char** argv) {
     }
 
     //Don't forget to free allocated memory, and close file descriptors.
-    free(shellDir);
+    free(shellName);
     //WE WILL CHECK VALGRIND!
 
     return EXIT_SUCCESS;
@@ -480,13 +481,20 @@ void redirection(char** rere){
         if(rere[i] != NULL){
             int n = atoi(rere[i]);
             if(n != 0){
-                if(strcmp(rere[i+1], ">") == 0){
+                if(rere[i+1] == '\000')
+                    break;
+                else if(strcmp(rere[i+1], ">") == 0){
                     int output = open(rere[i+2], O_WRONLY | O_TRUNC | O_CREAT, 0666);
                     dup2(output, n);
                     i = i + 2;
                     close(output);
                 }else if(strcmp(rere[i + 1], "<") == 0){
                     int input = open(rere[i+2], O_RDONLY);
+                    if(input == -1){
+                        close(input);
+                        fprintf(stderr, "%s: No file or directory\n", rere[i+2]);
+                        exit(input);
+                    }
                     dup2(input, n);
                     i = i + 2;
                     close(input);
@@ -494,6 +502,11 @@ void redirection(char** rere){
             }
             else if(strcmp(rere[i], "<") == 0){
                 int input = open(rere[i+1], O_RDONLY);
+                if(input == -1){
+                    close(input);
+                    fprintf(stderr, "%s: No file or directory\n", rere[i+2]);
+                    exit(input);
+                }
                 dup2(input, 0);
                 i++;
                 close(input);
@@ -513,15 +526,17 @@ void making_linked(Assign* head, char** rere){
     current->args = malloc(1024);
     int a = 0;
 
-    for(int i = 0; i < sizeof(rere); i++){
+    for(int i = 0; i < 100; i++){
         if(rere[i] != NULL){
             if(strcmp(rere[i], "|") == 0){
                 current->next = malloc(1024);
                 current = current->next;
                 current->args = malloc(1024);
                 a = 0;
-            }else{
-                current->args[a] = strdup(rere[i]);
+            }
+            else{
+                char* s = strdup(rere[i]);
+                current->args[a] = s;
                 a++;
             }
         }else{
@@ -563,37 +578,37 @@ void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, 
                 close(pipe_fds[i]);
             }
 
-            //redirection(current->args);
+            redirection(current->args);
             rere = remove_pipe(current->args);
 
-            char* en = calloc(1024, sizeof(char));
-            char* env = getenv("PATH");
-            strcpy(en, env);
+            char* f_test = getenv("PATH");
+            char* test = calloc(1024, sizeof(char));
+            strcpy(test, f_test);
+            char* path = strtok(test, ":"); //path will hold the invidual paths between the colons
 
-            char* path = strtok(en, ":");
             char* c_path = calloc(1024, sizeof(char));
             char** paths = (char**) calloc(1024, sizeof(char*));
             int a = 0;
-            int b = 0;
 
             while(path != NULL){
                 paths[a] = path;
                 path = strtok(NULL, ":");
                 a++;
-                b++;
             }
 
             if(doesFileExist(rere[0]) == 0){
-                execvp(rere[0], rere);
+                execv(rere[0], rere);
                 exit(EXIT_FAILURE);
             }else{
-                for(int i = 0; i < b; i++){
+                for(int i = 0; i < a; i++){
                     if(paths[i] != NULL){
                         strcat(c_path, paths[i]);
                         strcat(c_path, "/");
                         strcat(c_path, rere[0]);
-                        if(doesFileExist(c_path) == 0)
-                            execvp(c_path, rere);
+                        if(doesFileExist(c_path) == 0){
+                            execv(c_path, rere);
+                            exit(0);
+                        }
                         memset(c_path, '\0', 1024);
                     }
                 }
@@ -615,7 +630,7 @@ char** remove_pipe(char** rere){
     int j = 0;
     char** removed = calloc(1024, sizeof(char*));
 
-    for(int i = 0; i < sizeof(rere); i++){
+    for(int i = 0; i < 100; i++){
         if(rere[i] != NULL){
             int n = atoi(rere[i]);
             if(n != 0){

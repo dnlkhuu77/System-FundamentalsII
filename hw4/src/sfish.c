@@ -42,6 +42,7 @@ char* userInput[PATH_MAX + 1];
 int arg_count = 0;
 int pipes = 0;
 int n_commands = 0;
+int spid;
 
 int main(int argc, char** argv) {
     //DO NOT MODIFY THIS. If you do you will get a ZERO.
@@ -52,10 +53,13 @@ int main(int argc, char** argv) {
     rl_bind_keyseq("\\C-h", print_help2);
     rl_command_func_t print_sfish;
     rl_bind_keyseq("\\C-p", print_sfish);
+    rl_command_func_t store_pid;
+    rl_bind_keyseq("\\C-b", store_pid);
+    rl_command_func_t get_pid;
+    rl_bind_keyseq("\\C-g", get_pid);
 
     char* cmd;
-    //signal(SIGINT, sig_int_handler);
-    //signal(SIGSTOP, sig_stp_handler);
+    //signal(SIGCHILD, handleChild);
     shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
 
     while((cmd = readline(shellName)) != NULL){
@@ -549,19 +553,9 @@ void redirection(char** rere){
                     break;
                 else if(strcmp(rere[i+1], ">") == 0){
                     int output = open(rere[i+2], O_WRONLY | O_TRUNC | O_CREAT, 0666);
-                    dup2(output, 2);
+                    dup2(output, STDERR_FILENO);
                     i = i + 2;
                     close(output);
-                }else if(strcmp(rere[i + 1], "<") == 0){
-                    int input = open(rere[i+2], O_RDONLY);
-                    if(input == -1){
-                        close(input);
-                        fprintf(stderr, "%s: No file or directory\n", rere[i+2]);
-                        exit(input);
-                    }
-                    dup2(input, 2);
-                    i = i + 2;
-                    close(input);
                 }
             }
             else if(strcmp(rere[i], "<") == 0){
@@ -586,6 +580,9 @@ void redirection(char** rere){
 }
 
 void making_linked(Assign* head, char** rere){
+    int a = 0;
+    Assign* current = head;
+    current->args = malloc(1024);
 
     // int i = 0;
     //         while(rere[i] != NULL){
@@ -593,9 +590,6 @@ void making_linked(Assign* head, char** rere){
     //             i++;
     //         }
     //         printf("I is: %d\n", i);
-    int a = 0;
-    Assign* current = head;
-    current->args = malloc(1024);
 
     for(int i = 0; i < 100; i++){
         if(rere[i] != NULL){
@@ -611,7 +605,7 @@ void making_linked(Assign* head, char** rere){
                 a++;
             }
         }else{
-            current->args[a] = NULL;
+            current->args[a] = NULL; //fill the rest of the argument with NULL
             a++;
         }
     }
@@ -677,7 +671,7 @@ void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, 
             strcpy(test, f_test);
             char* path = strtok(test, ":"); //path will hold the invidual paths between the colons
 
-            char* c_path = calloc(1024, sizeof(char));
+            char* c_path = calloc(1024, sizeof(char)); //we can't set a fixed size array because we don't know arg_count
             char** paths = (char**) calloc(1024, sizeof(char*));
             int a = 0;
 
@@ -896,4 +890,16 @@ void changeDir(char* d){
             chdir(d);
         }
     }
+}
+
+int store_pid(int c, int key){
+    spid = -1;
+    return 0;
+}
+
+int get_pid(int c, int key){
+    if(spid == -1){
+        fprintf(stderr, "Process has not been set\n");
+    }
+    return 0;
 }

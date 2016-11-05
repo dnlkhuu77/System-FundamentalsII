@@ -41,19 +41,24 @@ char* shellName;
 char* userInput[PATH_MAX + 1];
 int arg_count = 0;
 int pipes = 0;
+int n_commands = 0;
 
 int main(int argc, char** argv) {
     //DO NOT MODIFY THIS. If you do you will get a ZERO.
     rl_catch_signals = 0;
     //This is disable readline's default signal handlers, since you are going
     //to install your own.
+    rl_command_func_t print_help2;
+    rl_bind_keyseq("\\C-h", print_help2);
+    rl_command_func_t print_sfish;
+    rl_bind_keyseq("\\C-p", print_sfish);
 
     char* cmd;
-    //pid_t long_pid;
+    //signal(SIGINT, sig_int_handler);
+    //signal(SIGSTOP, sig_stp_handler);
     shellName = cmd_display(u_toggle, m_toggle, u_color_toggle, u_bold_toggle, m_color_toggle, m_bold_toggle);
 
     while((cmd = readline(shellName)) != NULL){
-
         arg_count = 0;
         pid_t pid;
         pipes = 0;
@@ -144,6 +149,7 @@ int main(int argc, char** argv) {
 
         if(pipes > 0){
             Assign* head = NULL;
+            n_commands++;
             head = malloc(sizeof(Assign));
             making_linked(head, rere);
 
@@ -168,16 +174,24 @@ int main(int argc, char** argv) {
         int s_stdout = dup(1);
         int s_stderr = dup(2);
 
-        if(pipes == 0)
+        if(pipes == 0){
             redirection(rere);
+            n_commands++;
+        }
             
         built_flag = -1;
+
+        // signal(SIGCHILD, SIG_IGN);
+        // signal(SIGINT, SIG_IGN);
+        // signal(SIGTTOU, SIG_IGN);
+        // signal(SIGSTOP, SIG_IGN);
 
         if(userInput[0] == NULL){
             ;
         }
         else if(strcmp(userInput[0], "help") == 0){
             built_flag = 0;
+            n_commands++;
             pid = fork();
             if(pid == 0){
                 print_help();
@@ -192,11 +206,13 @@ int main(int argc, char** argv) {
             break;
         }
         else if(strcmp(userInput[0], "cd") == 0){
+            n_commands++;
             changeDir(userInput[1]);
             built_flag = 0;
         }
         else if(strcmp(userInput[0], "pwd") == 0){
             built_flag = 0;
+            n_commands++;
             pid = fork();
             if(pid == 0){
                 char* currentDir = getcwd(shellDir, 1024);
@@ -209,6 +225,7 @@ int main(int argc, char** argv) {
         }
         else if(strcmp(userInput[0], "prt") == 0){
             built_flag = 0;
+            n_commands++;
             pid = fork();
             if(pid == 0){
                 int s = WEXITSTATUS(child_status);
@@ -224,9 +241,10 @@ int main(int argc, char** argv) {
             built_flag = 0;
             char* settings = userInput[1];
             char* togg = userInput[2];
+            n_commands++;
 
             if(settings == NULL || togg == NULL)
-                ;
+                n_commands--;
             else if(strcmp(settings, "user") == 0){
                 if(strcmp(togg, "1") == 0)
                     u_toggle = 1;
@@ -239,6 +257,7 @@ int main(int argc, char** argv) {
                     m_toggle = 0;
             }
             else{
+                n_commands--;
                 fprintf(stderr, "This is not a valid command.\n");
             }
         }
@@ -247,9 +266,10 @@ int main(int argc, char** argv) {
             char* settings = userInput[1];
             char* color = userInput[2];
             char* bold = userInput[3];
+            n_commands++;
 
             if(settings == NULL || color == NULL || bold == NULL)
-                ;
+                n_commands--;
             else if(strcmp(settings, "user") == 0){
                 if(strcmp(color, "red") == 0){
                     if(strcmp(bold, "1") == 0){
@@ -324,6 +344,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 else{
+                    n_commands--;
                     fprintf(stderr, "This is not a valid command\n");
                 }
             }
@@ -401,6 +422,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 else{
+                    n_commands--;
                     fprintf(stderr, "This is not a valid command\n");
                 }
             }
@@ -437,6 +459,7 @@ int main(int argc, char** argv) {
 
                 if(doesFileExist(userInput[0]) == 0){ //if it already has the /
                     execv(userInput[0], custom_arg);
+                    n_commands++;
                     b_flag = 0;
                     break;
                 }
@@ -451,6 +474,7 @@ int main(int argc, char** argv) {
 
                     if(doesFileExist(g) == 0){
                         execv(g, custom_arg);
+                        n_commands++;
                         b_flag = 0;
                         break;
                     }
@@ -493,6 +517,23 @@ void print_help(){
     }
 }
 
+int print_help2(int c, int key){
+    for(int i = 0; i < 9; i++){
+        printf("%s\n", USAGE[i]);
+        rl_on_new_line();
+    }
+    return 0;
+}
+
+int print_sfish(int c, int key){
+    for(int i = 0; i < 6; i++){
+        printf("%s\n", SFISH[i]);
+        rl_on_new_line();
+    }
+    printf("%d\n", n_commands);
+    return 0;
+}
+
 int doesFileExist(char* s){
     struct stat buff;
     int x = stat(s, &buff);
@@ -503,13 +544,12 @@ int doesFileExist(char* s){
 void redirection(char** rere){
     for(int i = 0; i < 100; i++){
         if(rere[i] != NULL){
-            int n = atoi(rere[i]);
-            if(n != 0){
+            if(strcmp(rere[i], "2") == 0){
                 if(rere[i+1] == '\000')
                     break;
                 else if(strcmp(rere[i+1], ">") == 0){
                     int output = open(rere[i+2], O_WRONLY | O_TRUNC | O_CREAT, 0666);
-                    dup2(output, n);
+                    dup2(output, 2);
                     i = i + 2;
                     close(output);
                 }else if(strcmp(rere[i + 1], "<") == 0){
@@ -519,7 +559,7 @@ void redirection(char** rere){
                         fprintf(stderr, "%s: No file or directory\n", rere[i+2]);
                         exit(input);
                     }
-                    dup2(input, n);
+                    dup2(input, 2);
                     i = i + 2;
                     close(input);
                 }
@@ -616,8 +656,7 @@ void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, 
 
             for(int i = 0; i < 100; i++){
                 if(imm[i] != NULL){
-                    int n = atoi(imm[i]);
-                    if(n != 0){
+                    if(strcmp(imm[i], "2") == 0){
                         if(imm[i+1] == '\000'){
                             removed[b] = imm[i];
                             b++;
@@ -849,7 +888,7 @@ void changeDir(char* d){
             if(prevDir != NULL)
                 chdir(prevDir);
             else
-                printf(": OLDPWD not set\n");
+                fprintf(stderr, ": OLDPWD not set\n");
             prevDir = NULL;
         }
         else if(d != NULL){

@@ -9,20 +9,42 @@
  	struct Assign *next;
  } Assign;
 
+typedef struct job{
+  	char *name;
+  	pid_t pid;
+  	int jid; 
+  	int number;
+  	int status;
+  	struct job *next; 
+} job;
+
 /** The usage statement.*/
 const char* USAGE[9] = { 
-	"SFISH Bash, v.1\n"
-	"These shell commands are defined internally. Type `help' to see this list.\n\n",
-	"help [-dms] [pattern ...]\n",
-	"exit [n]\n",
-	"cd [-L|[-P [-e]] [-@]] [dir]\n",
-	"pwd [-LP]\n",
-	"prt\n",
-	"chpmt\n",
-	"chclr\n"
+	"\nSFISH Bash, v.1",
+	"These shell commands are defined internally. Type `help' to see this list.\n",
+	"help [-dms] [pattern ...]",
+	"exit [n]",
+	"cd [-L|[-P [-e]] [-@]] [dir]",
+	"pwd [-LP]",
+	"prt",
+	"chpmt",
+	"chclr"
+};
+
+const char* SFISH[6] = {
+	"\n----Info----",
+	"help",
+	"prt",
+	"----CTRL----",
+	"cd\nchclr\nchpmt\npwd\nexit",
+	"---Number of Commands Run----"
 };
 
 void print_help();
+
+int print_help2(int, int);
+
+int print_sfish(int, int);
 
 int doesFileExist(char*);
 

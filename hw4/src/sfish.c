@@ -596,10 +596,10 @@ void making_linked(Assign* head, char** rere){
     for(int i = 0; i < 100; i++){
         if(rere[i] != NULL){
             if(strcmp(rere[i], "|") == 0){
+                a = 0;
                 node->next = malloc(1024);
                 node = node->next;
                 node->args = malloc(1024);
-                a = 0;
             }
             else{
                 char* s = strdup(rere[i]);

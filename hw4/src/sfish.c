@@ -107,7 +107,6 @@ int main(int argc, char** argv) {
                         rere[a] = strdup(parse_args);
                         a++;
                         memset(parse_args, '\0', 1024);
-
                     }else{
                         //build the string
                         if(userInput[i][j] != ' ')
@@ -553,7 +552,8 @@ void redirection(char** rere){
                     break;
                 else if(strcmp(rere[i+1], ">") == 0){
                     int output = open(rere[i+2], O_WRONLY | O_TRUNC | O_CREAT, 0666);
-                    dup2(output, STDERR_FILENO);
+                    if(dup2(output, STDERR_FILENO) < 0)
+                        exit(EXIT_FAILURE);
                     i = i + 2;
                     close(output);
                 }
@@ -563,15 +563,17 @@ void redirection(char** rere){
                 if(input == -1){
                     close(input);
                     fprintf(stderr, "%s: No file or directory\n", rere[i+2]);
-                    exit(input);
+                    exit(EXIT_FAILURE);
                 }
-                dup2(input, 0);
+                if(dup2(input, STDIN_FILENO) < 0)
+                    exit(EXIT_FAILURE);
                 i++;
                 close(input);
             }
             else if(strcmp(rere[i], ">") == 0){
                 int output = open(rere[i+1], O_WRONLY | O_TRUNC | O_CREAT, 0666);
-                dup2(output, 1);
+                if(dup2(output, STDOUT_FILENO) < 0)
+                    exit(EXIT_FAILURE);
                 i++;
                 close(output);
             }
@@ -581,8 +583,8 @@ void redirection(char** rere){
 
 void making_linked(Assign* head, char** rere){
     int a = 0;
-    Assign* current = head;
-    current->args = malloc(1024);
+    Assign* node = head;
+    node->args = malloc(1024);
 
     // int i = 0;
     //         while(rere[i] != NULL){
@@ -594,18 +596,18 @@ void making_linked(Assign* head, char** rere){
     for(int i = 0; i < 100; i++){
         if(rere[i] != NULL){
             if(strcmp(rere[i], "|") == 0){
-                current->next = malloc(1024);
-                current = current->next;
-                current->args = malloc(1024);
+                node->next = malloc(1024);
+                node = node->next;
+                node->args = malloc(1024);
                 a = 0;
             }
             else{
                 char* s = strdup(rere[i]);
-                current->args[a] = s;
+                node->args[a] = s;
                 a++;
             }
         }else{
-            current->args[a] = NULL; //fill the rest of the argument with NULL
+            node->args[a] = NULL; //fill the rest of the argument with NULL
             a++;
         }
     }
@@ -683,7 +685,7 @@ void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, 
 
             if(doesFileExist(rere[0]) == 0){
                 execv(rere[0], rere);
-                exit(EXIT_FAILURE);
+                exit(0);
             }else{
                 for(int i = 0; i < a; i++){
                     if(paths[i] != NULL){
@@ -698,6 +700,9 @@ void piping_action(Assign* head, int pipes){ //rere would have {ls}, {-l}, {|}, 
                     }
                 }
             }
+            free(test);
+            free(c_path);
+            free(paths);
         }
         else if(pid < 0){
             exit(EXIT_FAILURE);

@@ -1,6 +1,8 @@
 #ifndef LOTT_H
 #define LOTT_H
 
+#define _GNU_SOURCE
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +11,7 @@
 #include <string.h>
 
 #define DATA_DIR "data"
+#define DATA_TEST "data2"
 
 #define HELP do{ \
                 printf("%s\n", "Lord of the Threads");\

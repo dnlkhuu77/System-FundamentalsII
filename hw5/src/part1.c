@@ -3,41 +3,63 @@
 
 static void* map(void*);
 static void* reduce(void*);
-static char* name(int, int);
+static char* name(char*, int);
 
 //MAKE SURE YOU USE THREAD-SAFE FUNCTIONS (USE strtok_r(3) and not strtok())!!
 
 int part1(){
-    //open and search the directory for a file (called map1 ...)
-    pthread_t map;
-    File_stats* fp;
-    fp = malloc(4096*sizeof(File_stats)); //making an array of structs
+    //open and search the directory for a file
+    char* name_now;
+    name_now = calloc(1024, sizeof(char));
+    File_stats* head = NULL;
+    head = malloc(sizeof(File_stats));
+    head->duration = -2;
+    int naming_number = 1;
 
-    static int files = 0;
     DIR* ptr = NULL;
     struct dirent *someptr;
-    char path[1024];
 
     if((ptr = opendir(DATA_TEST)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
         return -1;
 
-    while((someptr = readdir(ptr)) != NULL){
+    File_stats* current = head;
+    while((someptr = readdir(ptr)) != NULL){ //this will go through each individual file
         if(strcmp(someptr->d_name, "..") == 0)
             continue;
         else if (strcmp(someptr -> d_name, ".") == 0)
             continue;
-        else if(someptr->d_type == DT_DIR){
-            path[0] = '\0';
-            strncat(path, dir, sizeof(path) - 1);
-            strncat(path, "/", sizeof(path) - 1);
-            strncat(path, someptr->d_name, sizeof(path) - 1);
-            nfiles(path);
+        else if(someptr->d_type == DT_REG){
+            pthread_t tid;
+            if(current == head && current->duration == -2){
+                current->filename = someptr->d_name;
+                current->duration = 0; //this will change when we actually implment map
+                pthread_create(&tid, NULL, map, current);
+                name_now = name(name_now, naming_number);
+                pthread_setname_np(tid, name_now);
+                current->tid = tid;
+            }else{
+                current->next = malloc(1024);
+                current = current->next;
+
+                current->filename = someptr->d_name;
+                pthread_create(&tid, NULL, map, current);
+                name_now = name(name_now, naming_number);
+                pthread_setname_np(tid, name_now);
+                current->tid = tid;
+            }
+            naming_number++;
         }
-        else if(someptr->d_type == DT_REG)
-            files++;
     }
 
     closedir(ptr);
+    reduce(NULL);
+
+    current = head;
+    while(current != NULL){
+        printf("ROBO: %s\n", current->filename);
+        pthread_join(current->tid, NULL);
+        current = current->next;
+    }
 
     printf(
         "Part: %s\n"
@@ -47,7 +69,14 @@ int part1(){
     return 0;
 }
 
-static void* map(void* v){
+static void* map(void* v){ //the static makes the function accessible to part1
+    File_stats* abc = (File_stats*) v; //this is the 
+    printf("Printing file name: %s\n", abc->filename);
+    //FILE* current_file = NULL;
+    //current_file = fopen(abc->filename, "r");
+
+    //parse the text into its individual stats
+
     return NULL;
 }
 
@@ -55,22 +84,14 @@ static void* reduce(void* v){
     return NULL;
 }
 
-static char* name(int type, int thread_num){
-    char* s = calloc(30, sizeof(char));
-    if(type == 1){ //map
-        char* s = "map";
-        char* t = calloc(5, sizeof(char));
-        sprintf(t, "%d", thread_num);
+static char* name(char* s, int thread_num){
+    memset(s, 0, strlen(s));
+    strcat(s, "map");
 
-        strcat(s, t);
-    }
-    else if(type == 2){
-        char* s = "thread";
-        char* t = calloc(5, sizeof(char));
-        sprintf(t, "%d", thread_num)
+    char* t = malloc(5);
+    sprintf(t, "%d", thread_num);
 
-        strcat(s, t);
-    }
+    strcat(s, t);
     return s;
 }
 

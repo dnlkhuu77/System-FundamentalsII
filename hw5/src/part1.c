@@ -70,17 +70,70 @@ int part1(){
 }
 
 static void* map(void* v){ //the static makes the function accessible to part1
-    File_stats* abc = (File_stats*) v; //this is the 
-    printf("Printing file name: %s\n", abc->filename);
-    //FILE* current_file = NULL;
-    //current_file = fopen(abc->filename, "r");
+    File_stats* abc = (File_stats*) v;
+    int duration = 0;
+    int data_count = 0;
+
+    char* opening = calloc(1024, sizeof(char));
+    strcat(opening, DATA_TEST);
+    strcat(opening, "/");
+
+    strcat(opening, abc->filename);
+    printf("Printing file name: %s\n", opening);
+
+    FILE* current_file;
+    current_file = fopen(opening, "r");
 
     //parse the text into its individual stats
+    int counter = 0; //0 for UNIX, 1 for IP, 2 for DURATION, 3 for COUNTRY
+    char c;
+    char* stats_line = calloc(1024, sizeof(char));
+    while((c = fgetc(f)) != EOF){
+        if(c != '\n' && c != ';'){
+            strcat(stats_line, c);
+        }
+        else if(c == ';'){
+            if(counter == 0){ //UNIX
+                int unix = atoi(stats_line);
+                printf("UNIX TESTING: %d\n", unix);
+            }else if(counter == 2){
+                int current_dur = atoi(stats_line);
+                duration = current_dur + duration;
+                data_count++;
+            }
+            else if(counter == 3){
+                //should be two characters
+                printf("Country Code: %s\n", stats_line);
+                int index = -1;
+                
+            }
 
-    return NULL;
+
+            memset(stats_line, 0, 1024);
+            counter++;
+        }
+        else{
+            memset(stats_line, 0, 1024);
+            counter = 0;
+        }
+    }
+
+    fclose(current_file);
+    free(opening);
+
+    return NULL; //return abc
 }
 
 static void* reduce(void* v){
+    if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
+        printf("%s\n", A_REDUCE);
+    }
+    else if(strcmp(QUERY_STRINGS[current_query], "C") == 0 || strcmp(QUERY_STRINGS[current_query], "D") == 0){
+        printf("%s\n", B_REDUCE);
+    }
+    else if(strcmp(QUERY_STRINGS[current_query], "E") == 0){
+        printf("%s\n", C_REDUCE);
+    }
     return NULL;
 }
 

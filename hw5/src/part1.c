@@ -59,9 +59,13 @@ int part1(){
     }
 
     current = head;
-    // while(current != NULL){
+    Reduce_stats* final;
+    final = (Reduce_stats*) reduce(current);
+
+    // while(current != NULL){ //change these parameters to reduce parameters
     //     printf("FILES: %s\n", current->filename);
     //     printf("AVERAGE DURATION: %f\n", current->duration);
+    //     printf("AVERAGE USERS: %f\n", current->avg_usercount);
     //     printf("COUNTRY: %s\n", current->country);
     //     for(int i = 0; i < 10; i++){
     //         printf("Country Index: %s\n", current->country_index[i]);
@@ -69,15 +73,22 @@ int part1(){
     //     }
     //     current = current->next;
     // }
-    //Reduce_stats* final;
-    //final = (Reduce_stats*) reduce(current);
-    //printf("Answer: %s \n", final->max_file); //FOR A,B,C,D
-    //printf("Country: %s\n", final->country);
-    reduce(NULL);
+
     printf(
         "Part: %s\n"
         "Query: %s\n",
         PART_STRINGS[current_part], QUERY_STRINGS[current_query]);
+
+    if(strcmp(QUERY_STRINGS[current_query], "A") == 0)
+        printf("Result: %.5g, %s\n", final->max_durr, final->max_file);
+    else if(strcmp(QUERY_STRINGS[current_query], "B") == 0)
+        printf("Result: %.5g, %s\n", final->min_durr, final->min_file);
+    else if(strcmp(QUERY_STRINGS[current_query], "C") == 0)
+        printf("Result: %.5g, %s\n", final->max_users, final->max_file);
+    else if(strcmp(QUERY_STRINGS[current_query], "D") == 0)
+        printf("Result: %.5g, %s\n", final->min_users, final->min_file);
+    else if((strcmp(QUERY_STRINGS[current_query], "E") == 0))
+        printf("Result: %s\n", final->country);
 
     return 0;
 }
@@ -87,6 +98,10 @@ static void* map(void* v){ //the static makes the function accessible to part1
     File_stats* abc = (File_stats*) v;
     time_t now;
     struct tm ts;
+
+    char* filename_replace = malloc(1024);
+    strcat(filename_replace, abc->filename);
+    abc->filename_t = filename_replace;
 
     char* country_index[10];
     int country_counter[10];
@@ -203,11 +218,11 @@ static void* map(void* v){ //the static makes the function accessible to part1
     return abc;
 }
 
-static void* reduce(void* v){/*
+static void* reduce(void* v){
     File_stats* current = (File_stats*) v;
-    Reduce_stats* final = {0};
-    char* max_file;
-    char* min_file;
+    Reduce_stats* final = calloc(1, sizeof(Reduce_stats));
+    char* max_file = calloc(1024, sizeof(char));
+    char* min_file = calloc(1024, sizeof(char));
 
     if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
         //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
@@ -216,16 +231,17 @@ static void* reduce(void* v){/*
         while(current != NULL){
             if(max < current->duration){
                 max = current->duration;
-                max_file = strdup(current->filename);
+                max_file = current->filename_t;
             }
             current = current->next;
         }
         min = max;
+        min_file = max_file;
         current = (File_stats*) v; //reset back to the head
         while(current != NULL){
             if(min > current->duration){
                 min = current->duration;
-                min_file = strdup(current->filename);
+                min_file = current->filename_t;
             }
             current = current->next;
         }
@@ -240,16 +256,17 @@ static void* reduce(void* v){/*
         while(current != NULL){
             if(max < current->avg_usercount){
                 max = current->avg_usercount;
-                max_file = current->filename;
+                max_file = current->filename_t;
             }
             current = current->next;
         }
         min = max;
+        min_file = max_file;
         current = (File_stats*) v; //reset back to the head
         while(current != NULL){
             if(min > current->avg_usercount){
                 min = current->avg_usercount;
-                min_file = current->filename;
+                min_file = current->filename_t;
             }
             current = current->next;
         }
@@ -264,34 +281,44 @@ static void* reduce(void* v){/*
         char* country_index[10];
         int country_counter[10];
 
-        while(current != NULL){
+        while(current != NULL){ //for every file (which has two arrays for countries)
+            for(int i = 0; i < 10; i++){ //reset the array
+                country_counter[i] = 0;
+                country_index[i] = NULL;
+            }
+
             for(int i = 0; i < 10; i++){
                 country_index[i] = current->country_index[i];
                 country_counter[i] = current->country_counter[i];
             }
 
             int index = 0;
-            int flag = 0;
-            int flag2 = 0;
-            while(tcountry_index[index] != NULL){
-                for(int i = 0; i < 10; i++){
-                    if(strcmp(tcountry_index[index], country_index[i]) == 0){
+            //int flag = 0;
+
+            int i_index = 0;
+                while(country_counter[i_index] != 0){ //if there's 3 elements in array, i_index would be 3
+                    i_index++;
+            }
+
+            for(int i = 0; i < i_index; i++){
+                index = 0;
+                while(tcountry_counter[index] != 0){
+                    if(strcmp(country_index[i], tcountry_index[index]) == 0){
                         tcountry_counter[index] = tcountry_counter[index] + country_counter[i];
-                        flag2 = 1;
                         break;
                     }
-                    if(flag2 == 1)
-                        break;
+                    index++;
                 }
-                index++;
-            }
-            if(flag == 0){
-                tcountry_index[index] = country_index[index];
-                tcountry_counter[index] = country_counter[index];
+                if(tcountry_counter[index] == 0){
+                    tcountry_index[index] = country_index[i];
+                    tcountry_counter[index] = tcountry_counter[index] + country_counter[i];
+                }
             }
 
             current = current->next;
         }
+
+        //We're now going through array to find the max country
         int max_users = 0;
         int max_count = 0;
         int going = 0;
@@ -300,10 +327,11 @@ static void* reduce(void* v){/*
                 max_count = tcountry_counter[going];
                 max_users = going;
             }
+            going++;
         }
         final->country = tcountry_index[max_users];
-    }*/
-    return NULL;
+    }
+    return final;
 }
 
 static char* name(char* s, int thread_num){
@@ -316,5 +344,3 @@ static char* name(char* s, int thread_num){
     strcat(s, t);
     return s;
 }
-
-

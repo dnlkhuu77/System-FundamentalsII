@@ -17,9 +17,11 @@ typedef struct File_stats{
 } File_stats;
 
 typedef struct Reduce_stats{
-	char* filename;
+	char* max_file;
+	char* min_file;
+	double max_durr;
+	double min_durr;
+	double max_users;
+	double min_users;
 	char* country;
-	double max_duration;
-	int max_user_count;
-	struct Reduce_stats* next;
 } Reduce_stats;

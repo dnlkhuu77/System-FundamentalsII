@@ -1,11 +1,13 @@
 #include <limits.h>
 #include <pthread.h>
 #include <dirent.h>
+#include <stdio.h>
 #include <time.h>
 
 typedef struct File_stats{
 	pthread_t tid;
 	char* filename;
+	char* filename_t;
 	char* country;
 	double duration;
 	int user_count;

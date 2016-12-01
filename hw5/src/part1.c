@@ -5,56 +5,52 @@ static void* map(void*);
 static void* reduce(void*);
 static char* name(char*, int);
 
-//MAKE SURE YOU USE THREAD-SAFE FUNCTIONS (USE strtok_r(3) and not strtok())!!
-
 int part1(){
     char* name_now;
     name_now = calloc(1024, sizeof(char));
     File_stats* head = NULL;
-    head = malloc(sizeof(File_stats));
+    head = calloc(1,sizeof(File_stats));
     head->duration = -2;
     int naming_number = 1;
 
     DIR* ptr = NULL;
     struct dirent *someptr;
 
-    if((ptr = opendir(DATA_TEST)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
+    if((ptr = opendir(DATA_DIR)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
         return -1;
 
     File_stats* current = head;
     while((someptr = readdir(ptr)) != NULL){ //this will go through each individual file
         if(strcmp(someptr->d_name, "..") == 0)
             continue;
-        else if (strcmp(someptr -> d_name, ".") == 0)
+        else if (strcmp(someptr->d_name, ".") == 0)
             continue;
         else if(someptr->d_type == DT_REG){
-            pthread_t tid;
             if(current == head && current->duration == -2){
-                current->filename = someptr->d_name;
+                current->filename = calloc(256,sizeof(char));
+                strcpy(current->filename,someptr->d_name);
                 current->duration = 0; //this will change when we actually implment map
-                pthread_create(&tid, NULL, map, current);
+                pthread_create(&current->tid, NULL, map, current);
                 name_now = name(name_now, naming_number);
-                pthread_setname_np(tid, name_now);
-                current->tid = tid;
+                pthread_setname_np(current->tid, name_now);
             }else{
-                current->next = malloc(1024);
+                current->next = calloc(1, sizeof(File_stats));
                 current = current->next;
-
-                current->filename = someptr->d_name;
-                pthread_create(&tid, NULL, map, current);
+                current->filename = calloc(256,sizeof(char));   
+                strcpy(current->filename,someptr->d_name);
+                pthread_create(&current->tid, NULL, map, current);
                 name_now = name(name_now, naming_number);
-                pthread_setname_np(tid, name_now);
-                current->tid = tid;
+                pthread_setname_np(current->tid, name_now);
             }
             naming_number++;
         }
     }
-
     closedir(ptr);
 
     current = head;
     while(current != NULL){
-        pthread_join(current->tid, NULL);
+        pthread_t x = current->tid;
+        pthread_join(x, NULL);
         current = current->next;
     }
 
@@ -99,7 +95,7 @@ static void* map(void* v){ //the static makes the function accessible to part1
     time_t now;
     struct tm ts;
 
-    char* filename_replace = malloc(1024);
+    char* filename_replace = calloc(1024, sizeof(char));
     strcat(filename_replace, abc->filename);
     abc->filename_t = filename_replace;
 
@@ -115,7 +111,7 @@ static void* map(void* v){ //the static makes the function accessible to part1
     }
 
     char* opening = calloc(1024, sizeof(char));
-    strcat(opening, DATA_TEST); //CCCCCHHHHHHHHAAAAAANNNNNNNGGGGGGEEEEE THIS!
+    strcat(opening, DATA_DIR);
     strcat(opening, "/");
 
     strcat(opening, abc->filename);
@@ -137,6 +133,7 @@ static void* map(void* v){ //the static makes the function accessible to part1
     char* rest;
 
     while(fscanf(current_file, "%s", total_string) != EOF){
+
         //printf("TOTAL STRING: %s\n", total_string);
         int c_duration = 0;
         unix_string = strtok_r(total_string, ",", &rest);
@@ -208,10 +205,10 @@ static void* map(void* v){ //the static makes the function accessible to part1
     abc->country = country_index[max_index];
 
     fclose(current_file);
-    // free(opening); //might have to strdup to the struct itself to avoid core dumps
+    //free(opening); //might have to strdup to the struct itself to avoid core dumps
     //free(total_string);
     // free(unix_string);
-    //free(ip);
+    //free(filename_replace);
     // free(dur_string);
     // free(country);
 

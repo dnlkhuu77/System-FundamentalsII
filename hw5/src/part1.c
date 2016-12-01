@@ -58,18 +58,6 @@ int part1(){
     Reduce_stats* final;
     final = (Reduce_stats*) reduce(current);
 
-    // while(current != NULL){ //change these parameters to reduce parameters
-    //     printf("FILES: %s\n", current->filename);
-    //     printf("AVERAGE DURATION: %f\n", current->duration);
-    //     printf("AVERAGE USERS: %f\n", current->avg_usercount);
-    //     printf("COUNTRY: %s\n", current->country);
-    //     for(int i = 0; i < 10; i++){
-    //         printf("Country Index: %s\n", current->country_index[i]);
-    //         printf("Country Counter: %d\n", current->country_counter[i]);
-    //     }
-    //     current = current->next;
-    // }
-
     printf(
         "Part: %s\n"
         "Query: %s\n",
@@ -84,7 +72,7 @@ int part1(){
     else if(strcmp(QUERY_STRINGS[current_query], "D") == 0)
         printf("Result: %.5g, %s\n", final->min_users, final->min_file);
     else if((strcmp(QUERY_STRINGS[current_query], "E") == 0))
-        printf("Result: %s\n", final->country);
+        printf("Result: %d, %s\n", final->country_max, final->country);
 
     return 0;
 }
@@ -205,13 +193,6 @@ static void* map(void* v){ //the static makes the function accessible to part1
     abc->country = country_index[max_index];
 
     fclose(current_file);
-    //free(opening); //might have to strdup to the struct itself to avoid core dumps
-    //free(total_string);
-    // free(unix_string);
-    //free(filename_replace);
-    // free(dur_string);
-    // free(country);
-
     return abc;
 }
 
@@ -327,6 +308,7 @@ static void* reduce(void* v){
             going++;
         }
         final->country = tcountry_index[max_users];
+        final->country_max = tcountry_counter[max_users];
     }
     return final;
 }

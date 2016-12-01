@@ -7,8 +7,6 @@ static char* name(char*, int);
 static int nfiles(char*);
 
 int part2(size_t nthreads) {
-    char* name_now;
-    name_now = calloc(1024, sizeof(char));
     File_stats* head = NULL;
     head = calloc(1,sizeof(File_stats));
     head->duration = -2;
@@ -22,8 +20,12 @@ int part2(size_t nthreads) {
 
     int number_files = nfiles(DATA_DIR);
     int files_per = number_files / nthreads;
+    int remainder = number_files % nthreads;
     int count_thefiles = 0;
-
+    if(remainder > 0)
+        files_per++;
+    else
+        remainder = -1;
     if(number_files <= nthreads){
         files_per = 1;
     }
@@ -46,25 +48,34 @@ int part2(size_t nthreads) {
                 current->duration = 0; //this will change when we actually implment map
                 //the start of the linked list must have a thread
                 pthread_create(&current->tid, NULL, map, current);
+                char* name_now = calloc(1024, sizeof(char));
                 name_now = name(name_now, naming_number);
                 pthread_setname_np(current->tid, name_now);
+                naming_number++;
 
             }else{
+                if(remainder == 0){
+                    files_per--;
+                    remainder = -1;
+                }
+
                 current->next = calloc(1, sizeof(File_stats));
                 current = current->next;
                 current->filename = calloc(256,sizeof(char));   
                 strcpy(current->filename,someptr->d_name);
                 if(count_thefiles == files_per && thread_counter != nthreads){
                     thread_counter++;
+                    remainder--;
                     pthread_create(&current->tid, NULL, map, current);
+                    char* name_now = calloc(1024, sizeof(char));
                     name_now = name(name_now, naming_number);
                     pthread_setname_np(current->tid, name_now);
                     count_thefiles = 0;
+                    naming_number++;
                 }else{
                     map(current);
                 }
             }
-            naming_number++;
             count_thefiles++;
         }
     }
@@ -261,6 +272,10 @@ static void* reduce(void* v){
         double max = 0;
         double min = 0;
         while(current != NULL){
+            // if(strcmp(current->filename_t, "yellowpages_com.csv") == 0)
+            //     printf("YP: %f\n", current->avg_usercount);
+            // if(strcmp(current->filename_t, "123-reg_co_uk.csv") == 0)
+            //     printf("123: %f\n", current->avg_usercount);
             if(max < current->avg_usercount){
                 max = current->avg_usercount;
                 max_file = current->filename_t;

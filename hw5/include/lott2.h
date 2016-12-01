@@ -26,4 +26,5 @@ typedef struct Reduce_stats{
 	double max_users;
 	double min_users;
 	char* country;
+	int country_max;
 } Reduce_stats;

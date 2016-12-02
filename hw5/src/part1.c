@@ -121,8 +121,6 @@ static void* map(void* v){ //the static makes the function accessible to part1
     char* rest;
 
     while(fscanf(current_file, "%s", total_string) != EOF){
-
-        //printf("TOTAL STRING: %s\n", total_string);
         int c_duration = 0;
         unix_string = strtok_r(total_string, ",", &rest);
         strtok_r(NULL, ",", &rest);
@@ -145,11 +143,6 @@ static void* map(void* v){ //the static makes the function accessible to part1
         int index = 0;
         int fit = 0;
 
-        if(country_index[0] == NULL){ //for the first element
-            country_index[0] = strdup(country);
-            country_counter[0]++;
-        }
-
         while(country_index[index] != NULL){
             if(strcmp(country, country_index[index]) == 0){
                 country_counter[index]++;
@@ -162,10 +155,9 @@ static void* map(void* v){ //the static makes the function accessible to part1
             country_index[index] = strdup(country);
             country_counter[index]++;
         }
-
     }
 
-    double avg_duration = ((double)duration )/ user_counter;
+    double avg_duration = ((double)duration)/ user_counter;
     abc->duration = avg_duration;
 
     int nonzero_years = 0;
@@ -177,11 +169,6 @@ static void* map(void* v){ //the static makes the function accessible to part1
     abc->nonzero_years = nonzero_years;
     abc->avg_usercount = ((double) user_counter) / nonzero_years;
 
-    for(int i = 0; i < 10; i++){
-        abc->country_index[i] = country_index[i];
-        abc->country_counter[i] = country_counter[i];
-    }
-
     int max = 0;
     int max_index = 0;
     for(int i = 0; i < 10; i++){
@@ -190,7 +177,16 @@ static void* map(void* v){ //the static makes the function accessible to part1
             max_index = i;
         }
     }
+
+    for(int i = 0; i < 10; i++){
+        if(country_counter[i] == max){
+            if(strcmp(country_index[max_index], country_index[i]) > 0)
+                max_index = i;
+        }
+    }
+
     abc->country = country_index[max_index];
+    abc->country_counter = country_counter[max_index];
 
     fclose(current_file);
     return abc;
@@ -223,6 +219,21 @@ static void* reduce(void* v){
             }
             current = current->next;
         }
+        current = (File_stats*) v;
+        while(current != NULL){
+            if(max == current->duration){
+                if(strcmp(max_file, current->filename_t) > 0){ //alpha
+                    max_file = current->filename_t;
+                }
+            }
+            if(min == current->duration){
+                if(strcmp(min_file, current->filename_t) > 0){
+                    min_file = current->filename_t;
+                }
+            }
+            current = current->next;
+        }
+
         final->max_durr = max; //A
         final->min_durr = min; //B
         final->max_file = max_file;
@@ -248,6 +259,21 @@ static void* reduce(void* v){
             }
             current = current->next;
         }
+        current = (File_stats*) v;
+        while(current != NULL){
+            if(max == current->avg_usercount){
+                if(strcmp(max_file, current->filename_t) > 0){ //alpha
+                    max_file = current->filename_t;
+                }
+            }
+            if(min == current->avg_usercount){
+                if(strcmp(min_file, current->filename_t) > 0){
+                    min_file = current->filename_t;
+                }
+            }
+            current = current->next;
+        }
+
         final->max_users = max; //A
         final->min_users = min; //B
         final->max_file = max_file;
@@ -256,41 +282,28 @@ static void* reduce(void* v){
     else if(strcmp(QUERY_STRINGS[current_query], "E") == 0){
         char** tcountry_index = calloc(1024, sizeof(char*));
         int* tcountry_counter = calloc(1024, sizeof(int));
-        char* country_index[10];
-        int country_counter[10];
+        char* current_country = calloc(1024, sizeof(char));
+        int current_population = 0;
+        int index = 0;
+        int flag = 0;
 
         while(current != NULL){ //for every file (which has two arrays for countries)
-            for(int i = 0; i < 10; i++){ //reset the array
-                country_counter[i] = 0;
-                country_index[i] = NULL;
-            }
+            current_country = current->country;
+            current_population = current->country_counter;
+            index = 0;
+            flag = 0;
 
-            for(int i = 0; i < 10; i++){
-                country_index[i] = current->country_index[i];
-                country_counter[i] = current->country_counter[i];
-            }
-
-            int index = 0;
-            //int flag = 0;
-
-            int i_index = 0;
-                while(country_counter[i_index] != 0){ //if there's 3 elements in array, i_index would be 3
-                    i_index++;
-            }
-
-            for(int i = 0; i < i_index; i++){
-                index = 0;
-                while(tcountry_counter[index] != 0){
-                    if(strcmp(country_index[i], tcountry_index[index]) == 0){
-                        tcountry_counter[index] = tcountry_counter[index] + country_counter[i];
-                        break;
-                    }
-                    index++;
+            while(tcountry_counter[index] != 0){
+                if(strcmp(current_country, tcountry_index[index]) == 0){
+                    tcountry_counter[index] = tcountry_counter[index] + current_population;
+                    flag = 1;
+                    break;
                 }
-                if(tcountry_counter[index] == 0){
-                    tcountry_index[index] = country_index[i];
-                    tcountry_counter[index] = tcountry_counter[index] + country_counter[i];
-                }
+                index++;
+            }
+            if(flag == 0){
+                tcountry_index[index] = strdup(current_country);
+                tcountry_counter[index] = current_population;
             }
 
             current = current->next;

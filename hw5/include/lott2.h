@@ -14,7 +14,7 @@ typedef struct File_stats{
 	int nonzero_years;
 	double avg_usercount;
 	char* country_index[10];
-	int country_counter[10];
+	int country_counter;
 	struct File_stats* next;
 } File_stats;
 

@@ -19,6 +19,8 @@ int part2(size_t nthreads) {
         return -1;
 
     int number_files = nfiles(DATA_DIR);
+    if(number_files == 0)
+        return -1;
     int files_per = number_files / nthreads;
     int remainder = number_files % nthreads;
     int count_thefiles = 0;
@@ -29,7 +31,6 @@ int part2(size_t nthreads) {
     if(number_files <= nthreads){
         files_per = 1;
     }
-    //printf("Files per thread: %d\n", files_per);
 
     if((ptr = opendir(DATA_DIR)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
         return -1;

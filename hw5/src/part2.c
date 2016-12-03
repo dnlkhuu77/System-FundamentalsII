@@ -36,8 +36,13 @@ int part2(size_t nthreads) {
         return -1;
 
     File_stats* current = head;
-    int thread_counter = 1; //to count the head
+    File_stats* fit = current;
+    File_stats* last = NULL;
+    int thread_counter = 0; //to count the head
     while((someptr = readdir(ptr)) != NULL){ //this will go through each individual file
+
+        count_thefiles++;
+
         if(strcmp(someptr->d_name, "..") == 0)
             continue;
         else if (strcmp(someptr->d_name, ".") == 0)
@@ -47,13 +52,6 @@ int part2(size_t nthreads) {
                 current->filename = calloc(256,sizeof(char));
                 strcpy(current->filename,someptr->d_name);
                 current->duration = 0; //this will change when we actually implment map
-                //the start of the linked list must have a thread
-                pthread_create(&current->tid, NULL, map, current);
-                char* name_now = calloc(1024, sizeof(char));
-                name_now = name(name_now, naming_number);
-                pthread_setname_np(current->tid, name_now);
-                naming_number++;
-
             }else{
                 if(remainder == 0){
                     files_per--;
@@ -64,20 +62,23 @@ int part2(size_t nthreads) {
                 current = current->next;
                 current->filename = calloc(256,sizeof(char));   
                 strcpy(current->filename,someptr->d_name);
+                if(count_thefiles == 1)
+                    fit = current;
                 if(count_thefiles == files_per && thread_counter != nthreads){
+                    last = current;
+                    current = fit;
                     thread_counter++;
                     remainder--;
                     pthread_create(&current->tid, NULL, map, current);
                     char* name_now = calloc(1024, sizeof(char));
                     name_now = name(name_now, naming_number);
                     pthread_setname_np(current->tid, name_now);
+                    current = last;
                     count_thefiles = 0;
                     naming_number++;
-                }else{
-                    map(current);
                 }
             }
-            count_thefiles++;
+    
         }
     }
     closedir(ptr);
@@ -112,119 +113,125 @@ int part2(size_t nthreads) {
     return 0;
 }
 
-static void* map(void* v){ //the static makes the function accessible to part1
+static void* map(void* v){
     //printf("Hello from: %lu\n", pthread_self());
     File_stats* abc = (File_stats*) v;
     time_t now;
     struct tm ts;
 
-    char* filename_replace = calloc(1024, sizeof(char));
-    strcat(filename_replace, abc->filename);
-    abc->filename_t = filename_replace;
+    while(abc != NULL){
+        char* filename_replace = calloc(1024, sizeof(char));
 
-    char* country_index[10];
-    int country_counter[10];
-    for(int i = 0; i < 10; i++){
-        country_index[i] = NULL;
-        country_counter[i] = 0;
-    }
-    int year_check[138];
-    for(int i = 0; i < 138; i++){
-        year_check[i] = 0;
-    }
+        strcat(filename_replace, abc->filename);
+        abc->filename_t = filename_replace;
 
-    char* opening = calloc(1024, sizeof(char));
-    strcat(opening, DATA_DIR);
-    strcat(opening, "/");
+        char* country_index[10];
+        int country_counter[10];
+        for(int i = 0; i < 10; i++){
+            country_index[i] = NULL;
+            country_counter[i] = 0;
+        }
+        int year_check[138];
+        for(int i = 0; i < 138; i++){
+            year_check[i] = 0;
+        }
 
-    strcat(opening, abc->filename);
-    //printf("Printing file name: %s\n", opening);
+        char* opening = calloc(1024, sizeof(char));
+        strcat(opening, DATA_DIR);
+        strcat(opening, "/");
 
-    FILE* current_file;
-    current_file = fopen(opening, "r");
+        strcat(opening, abc->filename);
+        //printf("Printing file name: %s\n", opening);
 
-    //parse the text into its individual stats
-    int user_counter = 0;
-    int year = 0;
-    char* year_string = calloc(1024, sizeof(char));
-    int duration = 0;
+        FILE* current_file;
+        current_file = fopen(opening, "r");
 
-    char* total_string = calloc(1024, sizeof(char));
-    char* unix_string = calloc(1024, sizeof(char));
-    char* dur_string = calloc(1024, sizeof(char));
-    char* country = calloc(1024, sizeof(char));
-    char* rest;
+        //parse the text into its individual stats
+        int user_counter = 0;
+        int year = 0;
+        char* year_string = calloc(1024, sizeof(char));
+        int duration = 0;
 
-    while(fscanf(current_file, "%s", total_string) != EOF){
-        int c_duration = 0;
-        unix_string = strtok_r(total_string, ",", &rest);
-        strtok_r(NULL, ",", &rest);
-        dur_string = strtok_r(NULL, ",", &rest);
-        country = strtok_r(NULL, ",", &rest);
+        char* total_string = calloc(1024, sizeof(char));
+        char* unix_string = calloc(1024, sizeof(char));
+        char* dur_string = calloc(1024, sizeof(char));
+        char* country = calloc(1024, sizeof(char));
+        char* rest;
 
-        user_counter++; //raise the counter of users
-        c_duration = atoi(dur_string);
-        duration = duration + c_duration; //raise the total duration
+        while(fscanf(current_file, "%s", total_string) != EOF){
+            int c_duration = 0;
+            unix_string = strtok_r(total_string, ",", &rest);
+            strtok_r(NULL, ",", &rest);
+            dur_string = strtok_r(NULL, ",", &rest);
+            country = strtok_r(NULL, ",", &rest);
 
-        now = (time_t) atoi(unix_string); //change the UNIX to time_n
-        localtime_r(&now, &ts);
+            user_counter++; //raise the counter of users
+            c_duration = atoi(dur_string);
+            duration = duration + c_duration; //raise the total duration
 
-        strftime(year_string, sizeof(year_string), "%Y", &ts);
-        //printf("Year %s\n", year_string);
-        year = atoi(year_string);
-        year = year - 1901;
-        year_check[year]++; //for nonzero years
+            now = (time_t) atoi(unix_string); //change the UNIX to time_n
+            localtime_r(&now, &ts);
 
-        int index = 0;
-        int fit = 0;
+            strftime(year_string, sizeof(year_string), "%Y", &ts);
+            //printf("Year %s\n", year_string);
+            year = atoi(year_string);
+            year = year - 1901;
+            year_check[year]++; //for nonzero years
 
-        while(country_index[index] != NULL){
-            if(strcmp(country, country_index[index]) == 0){
-                country_counter[index]++;
-                fit = 1;
-                break;
+            int index = 0;
+            int fit = 0;
+
+            while(country_index[index] != NULL){
+                if(strcmp(country, country_index[index]) == 0){
+                    country_counter[index]++;
+                    fit = 1;
+                    break;
+                }
+                index++;
             }
-            index++;
+            if(fit == 0){
+                country_index[index] = strdup(country);
+                country_counter[index]++;
+            }
         }
-        if(fit == 0){
-            country_index[index] = strdup(country);
-            country_counter[index]++;
+
+        double avg_duration = ((double)duration)/ user_counter;
+        abc->duration = avg_duration;
+
+        int nonzero_years = 0;
+        for(int i = 0; i < 138; i++){
+            if(year_check[i] != 0)
+                nonzero_years++;
         }
+        abc->user_count = user_counter;
+        abc->nonzero_years = nonzero_years;
+        abc->avg_usercount = ((double) user_counter) / nonzero_years;
 
-    }
-
-    double avg_duration = ((double)duration)/ user_counter;
-    abc->duration = avg_duration;
-
-    int nonzero_years = 0;
-    for(int i = 0; i < 138; i++){
-        if(year_check[i] != 0)
-            nonzero_years++;
-    }
-    abc->user_count = user_counter;
-    abc->nonzero_years = nonzero_years;
-    abc->avg_usercount = ((double) user_counter) / nonzero_years;
-
-    int max = 0;
-    int max_index = 0;
-    for(int i = 0; i < 10; i++){
-        if(max < country_counter[i]){ //the first one will be the max
-            max = country_counter[i];
-            max_index = i;
-        }
-    }
-
-    for(int i = 0; i < 10; i++){
-        if(country_counter[i] == max){
-            if(strcmp(country_index[max_index], country_index[i]) > 0)
+        int max = 0;
+        int max_index = 0;
+        for(int i = 0; i < 10; i++){
+            if(max < country_counter[i]){ //the first one will be the max
+                max = country_counter[i];
                 max_index = i;
+            }
         }
+
+        for(int i = 0; i < 10; i++){
+            if(country_counter[i] == max){
+                if(strcmp(country_index[max_index], country_index[i]) > 0)
+                    max_index = i;
+            }
+        }
+
+        abc->country = country_index[max_index];
+        abc->country_counter = country_counter[max_index];
+
+        fclose(current_file);
+        if(abc->next == NULL)
+            break;
+        abc = abc->next;
+
     }
-
-    abc->country = country_index[max_index];
-    abc->country_counter = country_counter[max_index];
-
-    fclose(current_file);
     return abc;
 }
 

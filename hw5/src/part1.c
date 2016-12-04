@@ -11,7 +11,7 @@ int part1(){
     File_stats* head = NULL;
     head = calloc(1,sizeof(File_stats));
     head->duration = -2;
-    int naming_number = 1;
+    int naming_number = 0;
 
     DIR* ptr = NULL;
     struct dirent *someptr;
@@ -328,7 +328,7 @@ static void* reduce(void* v){
 
 static char* name(char* s, int thread_num){
     memset(s, 0, strlen(s));
-    strcat(s, "map");
+    strcat(s, "map ");
 
     char* t = malloc(5);
     sprintf(t, "%d", thread_num);

@@ -12,7 +12,7 @@ int part2(size_t nthreads) {
     head->duration = -2;
     int naming_number = 0;
 
-    DIR* ptr = NULL;
+    DIR* ptr;
     struct dirent *someptr;
 
     if(nthreads == 0)
@@ -23,66 +23,77 @@ int part2(size_t nthreads) {
         return -1;
     int files_per = number_files / nthreads;
     int remainder = number_files % nthreads;
-    int count_thefiles = 0;
-    if(remainder > 0)
-        files_per++;
-    else
-        remainder = -1;
-    if(number_files <= nthreads){
-        files_per = 1;
+    
+    int files_array[nthreads];
+    for(int i = 0; i < nthreads; i++)
+        files_array[i] = files_per;
+
+    for(int i = 0; i < nthreads; i++){
+        if(remainder > 0){
+            files_array[i]++;
+            remainder--;
+        }
+        if(remainder == 0)
+            break;
     }
 
     if((ptr = opendir(DATA_DIR)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
         return -1;
 
     File_stats* current = head;
-    File_stats* fit = current;
-    File_stats* last = NULL;
-    int thread_counter = 0; //to count the head
+
     while((someptr = readdir(ptr)) != NULL){ //this will go through each individual file
-
-        count_thefiles++;
-
         if(strcmp(someptr->d_name, "..") == 0)
             continue;
         else if (strcmp(someptr->d_name, ".") == 0)
             continue;
         else if(someptr->d_type == DT_REG){
-            if(current == head && current->duration == -2){
-                current->filename = calloc(256,sizeof(char));
-                strcpy(current->filename,someptr->d_name);
-                current->duration = 0; //this will change when we actually implment map
-            }else{
-                if(remainder == 0){
-                    files_per--;
-                    remainder = -1;
-                }
+            current->filename = calloc(256,sizeof(char));
+            strcpy(current->filename,someptr->d_name);
+            current->files = 0;
 
-                current->next = calloc(1, sizeof(File_stats));
-                current = current->next;
-                current->filename = calloc(256,sizeof(char));   
-                strcpy(current->filename,someptr->d_name);
-                if(count_thefiles == 1)
-                    fit = current;
-                if(count_thefiles == files_per && thread_counter != nthreads){
-                    last = current;
-                    current = fit;
-                    thread_counter++;
-                    remainder--;
-                    pthread_create(&current->tid, NULL, map, current);
-                    char* name_now = calloc(1024, sizeof(char));
-                    name_now = name(name_now, naming_number);
-                    pthread_setname_np(current->tid, name_now);
-                    current = last;
-                    count_thefiles = 0;
-                    naming_number++;
+            long saved = telldir(ptr);
+            if((someptr = readdir(ptr)) != NULL){
+                if(strcmp(someptr->d_name, ".") != 0 || strcmp(someptr->d_name, "..") != 0){
+                    current->next = calloc(1, sizeof(File_stats));
+                    current = current->next;
                 }
             }
-    
+            seekdir(ptr, saved);
         }
     }
     closedir(ptr);
+
     current = head;
+    int index = 0;
+    int files_remain = 0;
+    int heat_count = 0;
+    File_stats* thread_heads[nthreads];
+    while(current != NULL){
+        if(files_remain == 0 && index <= nthreads){
+            files_remain = files_array[index];
+            current->files = files_remain;
+            thread_heads[heat_count] = current;
+            files_remain--;
+            index++;
+            heat_count++;
+        }else if(files_remain > 0)
+            files_remain--;
+
+        current = current->next;
+    }
+
+    current = head;
+
+    for(int i = 0; i < nthreads; i++){
+        char* name_now = calloc(128, sizeof(char));
+        name_now = name(name_now, naming_number);
+        pthread_create(&thread_heads[i]->tid, NULL, map, thread_heads[i]);
+        pthread_setname_np(thread_heads[i]->tid, name_now);
+
+        naming_number++;
+
+    }
     //printf("NUMBER OF THREADS: %d\n", thread_counter);
     while(current != NULL){
         pthread_t x = current->tid;
@@ -118,8 +129,9 @@ static void* map(void* v){
     File_stats* abc = (File_stats*) v;
     time_t now;
     struct tm ts;
+    int holy = abc->files;
 
-    while(abc != NULL){
+    for(int a = 0; a < holy; a++){
         char* filename_replace = calloc(1024, sizeof(char));
 
         strcat(filename_replace, abc->filename);
@@ -227,8 +239,6 @@ static void* map(void* v){
         abc->country_counter = country_counter[max_index];
 
         fclose(current_file);
-        if(abc->next == NULL)
-            break;
         abc = abc->next;
 
     }

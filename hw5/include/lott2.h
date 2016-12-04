@@ -6,6 +6,7 @@
 
 typedef struct File_stats{
 	pthread_t tid;
+	int files;
 	char* filename;
 	char* filename_t;
 	char* country;

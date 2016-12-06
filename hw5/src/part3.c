@@ -49,7 +49,6 @@ static void* reader(Reduce_stats* v){
         sem_post(&mutex);
 
         while(fgets(toRead, 128, readfp) != NULL){
-            printf("TO READL %s\n", toRead);
             reduce2(toRead, v);
         }
 

@@ -24,6 +24,7 @@ void writer(char* toWrite){
 
     sem_post(&w);
 }
+//THE READER FUNCTION IS IN THE REDUCE FUNCTION
 
 int part3(size_t nthreads) {
     File_stats* head = NULL;
@@ -60,7 +61,7 @@ int part3(size_t nthreads) {
             break;
     }
 
-    if((ptr = opendir(DATA_DIR)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
+    if((ptr = opendir(DATA_DIR)) == NULL)
         return -1;
 
     File_stats* current = head;
@@ -109,7 +110,6 @@ int part3(size_t nthreads) {
     writefp = fopen("mapred.tmp", "a");
     readfp = fopen("mapred.tmp", "r");
     current = head;
-    Reduce_stats* final = calloc(1, sizeof(Reduce_stats));
 
     for(int i = 0; i < nthreads; i++){
         char* name_now = calloc(128, sizeof(char));
@@ -119,6 +119,7 @@ int part3(size_t nthreads) {
         naming_number++;
     }
 
+    Reduce_stats* final = calloc(1, sizeof(Reduce_stats));
     pthread_create(&final->tid, NULL, reduce, final);
     char* name_now = calloc(128, sizeof(char));
     name_now = name(name_now, 1, 0);
@@ -310,22 +311,23 @@ static void* reduce(void* v){
     char* rest;
     double max = 0;
     double min = 999999999;
+    char** tcountry_index = calloc(1024, sizeof(char*));
+    int* tcountry_counter = calloc(1024, sizeof(int));
+    char* current_country = calloc(1024, sizeof(char));
 
     while(1){
-        sem_wait(&mutex);
+        sem_wait(&mutex); //THIS IS THE READER PART OF THE THREADS!
         readcnt++;
         if(readcnt == 1)
             sem_wait(&w);
         sem_post(&mutex);
 
-        while(fgets(total_string, 128, readfp) != NULL){ //INCLUDE EOF){
+        while(fgets(total_string, 128, readfp) != NULL){
             current->filename_t = strdup(strtok_r(total_string, ",", &rest));
             current->duration = atof(strtok_r(NULL, ",", &rest));
             current->avg_usercount = atof(strtok_r(NULL, ",", &rest));
             current->country = strdup(strtok_r(NULL, ",", &rest));
             current->country_counter = atoi(strtok_r(NULL, ",", &rest));
-            printf("FILES: %s\n", current->filename_t);
-            printf("STOP\n");
 
             if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
                 //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
@@ -378,9 +380,6 @@ static void* reduce(void* v){
                 final->min_file = min_file;
             }
             else if(strcmp(QUERY_STRINGS[current_query], "E") == 0){
-                char** tcountry_index = calloc(1024, sizeof(char*));
-                int* tcountry_counter = calloc(1024, sizeof(int));
-                char* current_country = calloc(1024, sizeof(char));
                 int current_population = 0;
                 int index = 0;
                 int flag = 0;
@@ -403,7 +402,6 @@ static void* reduce(void* v){
                     tcountry_counter[index] = current_population;
                 }
 
-
                 //We're now going through array to find the max country
                 int max_users = 0;
                 int max_count = 0;
@@ -417,7 +415,6 @@ static void* reduce(void* v){
                 }
                 final->country = tcountry_index[max_users];
                 final->country_max = tcountry_counter[max_users];
-                ;
             }
         }
         if(isRunning == 0){
@@ -430,8 +427,6 @@ static void* reduce(void* v){
             sem_post(&w);
         sem_post(&mutex);
     }
-    printf("MAX: %f\n", final->max_durr);
-    printf("MAX FILE: %s\n", final->max_file);
     return final;
 }
 

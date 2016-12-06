@@ -20,6 +20,7 @@ typedef struct File_stats{
 } File_stats;
 
 typedef struct Reduce_stats{
+	pthread_t tid;
 	char* max_file;
 	char* min_file;
 	double max_durr;

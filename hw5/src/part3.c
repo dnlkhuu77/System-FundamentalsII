@@ -4,9 +4,11 @@
 
 static void* map(void*);
 static void* reduce(void*);
+static void* reduce2(char*, Reduce_stats*);
 static char* name(char*, int, int);
 static int nfiles(char*);
-void writer(char*);
+static void writer(char*);
+static void* reader(Reduce_stats*);
 
 int map_flag;
 int readcnt;
@@ -16,13 +18,51 @@ FILE* readfp;
 FILE* writefp;
 int isRunning = 1;
 
-void writer(char* toWrite){
+File_stats* current;
+Reduce_stats* fine;
+char* max_file;
+char* min_file;
+char total_string[128];
+double max = 0;
+double min = 999999999;
+char** tcountry_index;
+int* tcountry_counter;
+char* current_country;
+int flag = 0;
+
+static void writer(char* toWrite){
     sem_wait(&w);
 
     fprintf(writefp, "%s\n", toWrite);
     fflush(writefp);
 
     sem_post(&w);
+}
+
+static void* reader(Reduce_stats* v){
+    char toRead[128];
+    while(1){
+        sem_wait(&mutex);
+        readcnt++;
+        if(readcnt == 1)
+            sem_wait(&w);
+        sem_post(&mutex);
+
+        while(fgets(toRead, 128, readfp) != NULL){
+            printf("TO READL %s\n", toRead);
+            reduce2(toRead, v);
+        }
+
+        sem_wait(&mutex);
+        readcnt--;
+        if(readcnt == 0)
+            sem_post(&w);
+        sem_post(&mutex);
+
+        if(isRunning == 0)
+            break;
+    }
+    return v;
 }
 //THE READER FUNCTION IS IN THE REDUCE FUNCTION
 
@@ -303,131 +343,122 @@ static void* map(void* v){
 
 static void* reduce(void* v){
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    File_stats* current = calloc(1, sizeof(File_stats));
     Reduce_stats* final = (Reduce_stats*) v;
-    char* max_file = calloc(1024, sizeof(char));
-    char* min_file = calloc(1024, sizeof(char));
-    char total_string[128];
-    char* rest;
-    double max = 0;
-    double min = 999999999;
-    char** tcountry_index = calloc(1024, sizeof(char*));
-    int* tcountry_counter = calloc(1024, sizeof(int));
-    char* current_country = calloc(1024, sizeof(char));
 
-    while(1){
-        sem_wait(&mutex); //THIS IS THE READER PART OF THE THREADS!
-        readcnt++;
-        if(readcnt == 1)
-            sem_wait(&w);
-        sem_post(&mutex);
-
-        while(fgets(total_string, 128, readfp) != NULL){
-            current->filename_t = strdup(strtok_r(total_string, ",", &rest));
-            current->duration = atof(strtok_r(NULL, ",", &rest));
-            current->avg_usercount = atof(strtok_r(NULL, ",", &rest));
-            current->country = strdup(strtok_r(NULL, ",", &rest));
-            current->country_counter = atoi(strtok_r(NULL, ",", &rest));
-
-            if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
-                //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
-                if(max < current->duration){
-                    max = current->duration;
-                    max_file = current->filename_t;
-                }
-                else if(max == current->duration){
-                    if(strcmp(max_file, current->filename_t) > 0)
-                        max_file = current->filename_t;
-                }
-
-                if(min > current->duration){
-                    min = current->duration;
-                    min_file = current->filename_t;
-                }
-                else if(min == current->duration){
-                    if(strcmp(min_file, current->filename_t) > 0)
-                        min_file = current->filename_t;
-                }
-
-                final->max_durr = max; //A
-                final->min_durr = min; //B
-                final->max_file = max_file;
-                final->min_file = min_file;
-            }
-            else if(strcmp(QUERY_STRINGS[current_query], "C") == 0 || strcmp(QUERY_STRINGS[current_query], "D") == 0){
-
-                if(max < current->avg_usercount){
-                    max = current->avg_usercount;
-                    max_file = current->filename_t;
-                }
-                else if(max == current->avg_usercount){
-                    if(strcmp(max_file, current->filename_t) > 0)
-                        max_file = current->filename_t;
-                }
-
-                if(min > current->avg_usercount){
-                    min = current->avg_usercount;
-                    min_file = current->filename_t;
-                }
-                else if(min == current->avg_usercount){
-                    if(strcmp(min_file, current->filename_t) > 0)
-                        min_file = current->filename_t;
-                }
-
-                final->max_users = max; //A
-                final->min_users = min; //B
-                final->max_file = max_file;
-                final->min_file = min_file;
-            }
-            else if(strcmp(QUERY_STRINGS[current_query], "E") == 0){
-                int current_population = 0;
-                int index = 0;
-                int flag = 0;
-
-                current_country = current->country;
-                current_population = current->country_counter;
-                index = 0;
-                flag = 0;
-
-                while(tcountry_counter[index] != 0){
-                    if(strcmp(current_country, tcountry_index[index]) == 0){
-                        tcountry_counter[index] = tcountry_counter[index] + current_population;
-                        flag = 1;
-                        break;
-                    }
-                    index++;
-                }
-                if(flag == 0){
-                    tcountry_index[index] = strdup(current_country);
-                    tcountry_counter[index] = current_population;
-                }
-
-                //We're now going through array to find the max country
-                int max_users = 0;
-                int max_count = 0;
-                int going = 0;
-                while(tcountry_counter[going] != 0){
-                    if(max_count < tcountry_counter[going]){
-                        max_count = tcountry_counter[going];
-                        max_users = going;
-                    }
-                    going++;
-                }
-                final->country = tcountry_index[max_users];
-                final->country_max = tcountry_counter[max_users];
-            }
-        }
-        if(isRunning == 0){
-            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-            break;
-        }
-        sem_wait(&mutex);
-        readcnt--;
-        if(readcnt == 0)
-            sem_post(&w);
-        sem_post(&mutex);
-    }
+    reader(final);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     return final;
+}
+
+static void* reduce2(char* total_string, Reduce_stats* v){
+    char* rest;
+    fine = (Reduce_stats*) v;
+    if(flag == 0){
+        current = calloc(1, sizeof(File_stats));
+        max_file = calloc(1024, sizeof(char));
+        min_file = calloc(1024, sizeof(char));
+        max = 0;
+        min = 999999999;
+        tcountry_index = calloc(1024, sizeof(char*));
+        tcountry_counter = calloc(1024, sizeof(int));
+        current_country = calloc(1024, sizeof(char));
+        flag = 1;
+    }
+
+        current->filename_t = strdup(strtok_r(total_string, ",", &rest));
+        current->duration = atof(strtok_r(NULL, ",", &rest));
+        current->avg_usercount = atof(strtok_r(NULL, ",", &rest));
+        current->country = strdup(strtok_r(NULL, ",", &rest));
+        current->country_counter = atoi(strtok_r(NULL, ",", &rest));
+
+        if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
+            //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
+            if(max < current->duration){
+                max = current->duration;
+                max_file = current->filename_t;
+            }
+            else if(max == current->duration){
+                if(strcmp(max_file, current->filename_t) > 0)
+                    max_file = current->filename_t;
+            }
+
+            if(min > current->duration){
+                min = current->duration;
+                min_file = current->filename_t;
+            }
+            else if(min == current->duration){
+                if(strcmp(min_file, current->filename_t) > 0)
+                    min_file = current->filename_t;
+            }
+
+            fine->max_durr = max; //A
+            fine->min_durr = min; //B
+            fine->max_file = max_file;
+            fine->min_file = min_file;
+        }
+        else if(strcmp(QUERY_STRINGS[current_query], "C") == 0 || strcmp(QUERY_STRINGS[current_query], "D") == 0){
+
+            if(max < current->avg_usercount){
+                max = current->avg_usercount;
+                max_file = current->filename_t;
+            }
+            else if(max == current->avg_usercount){
+                if(strcmp(max_file, current->filename_t) > 0)
+                    max_file = current->filename_t;
+            }
+
+            if(min > current->avg_usercount){
+                min = current->avg_usercount;
+                min_file = current->filename_t;
+            }
+            else if(min == current->avg_usercount){
+                if(strcmp(min_file, current->filename_t) > 0)
+                    min_file = current->filename_t;
+            }
+
+            fine->max_users = max; //A
+            fine->min_users = min; //B
+            fine->max_file = max_file;
+            fine->min_file = min_file;
+        }
+        else if(strcmp(QUERY_STRINGS[current_query], "E") == 0){
+            int current_population = 0;
+            int index = 0;
+            int flag = 0;
+
+            current_country = current->country;
+            current_population = current->country_counter;
+            index = 0;
+            flag = 0;
+
+            while(tcountry_counter[index] != 0){
+                if(strcmp(current_country, tcountry_index[index]) == 0){
+                    tcountry_counter[index] = tcountry_counter[index] + current_population;
+                    flag = 1;
+                    break;
+                }
+                index++;
+            }
+            if(flag == 0){
+                tcountry_index[index] = strdup(current_country);
+                tcountry_counter[index] = current_population;
+            }
+
+            //We're now going through array to find the max country
+            int max_users = 0;
+            int max_count = 0;
+            int going = 0;
+            while(tcountry_counter[going] != 0){
+                if(max_count < tcountry_counter[going]){
+                    max_count = tcountry_counter[going];
+                    max_users = going;
+                }
+                going++;
+            }
+            fine->country = tcountry_index[max_users];
+            fine->country_max = tcountry_counter[max_users];
+        }
+        return fine;
 }
 
 static char* name(char* s, int thread_type, int thread_num){

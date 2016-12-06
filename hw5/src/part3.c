@@ -6,34 +6,15 @@ static void* map(void*);
 static void* reduce(void*);
 static char* name(char*, int, int);
 static int nfiles(char*);
-void* reader(char*);
 void writer(char*);
 
+int map_flag;
 int readcnt;
+int limit;
 sem_t mutex, w;
 FILE* readfp;
 FILE* writefp;
-
-void* reader(char* toRead){
-    while(1){
-        sem_wait(&mutex);
-        readcnt++;
-        if(readcnt == 1){
-            sem_post(&w);
-        }
-        sem_post(&mutex);
-
-        fscanf(readfp, "%s", toRead);
-
-        sem_wait(&mutex);
-        readcnt--;
-        if(readcnt == 0){
-            sem_post(&w);
-        }
-        sem_post(&mutex);
-    }
-    return toRead;
-}
+int isRunning = 1;
 
 void writer(char* toWrite){
     sem_wait(&w);
@@ -52,6 +33,7 @@ int part3(size_t nthreads) {
 
     sem_init(&mutex, 0, 1);
     sem_init(&w, 0, 1);
+    limit = nthreads;
 
     DIR* ptr;
     struct dirent *someptr;
@@ -127,6 +109,7 @@ int part3(size_t nthreads) {
     writefp = fopen("mapred.tmp", "a");
     readfp = fopen("mapred.tmp", "r");
     current = head;
+    Reduce_stats* final = calloc(1, sizeof(Reduce_stats));
 
     for(int i = 0; i < nthreads; i++){
         char* name_now = calloc(128, sizeof(char));
@@ -136,19 +119,27 @@ int part3(size_t nthreads) {
         naming_number++;
     }
 
-    current = head;
-    Reduce_stats* final = calloc(1, sizeof(Reduce_stats));
     pthread_create(&final->tid, NULL, reduce, final);
     char* name_now = calloc(128, sizeof(char));
     name_now = name(name_now, 1, 0);
     pthread_setname_np(final->tid, name_now);
+    free(name_now);
 
+    current = head;
     while(current != NULL){
         pthread_t x = current->tid;
         pthread_join(x, NULL);
         current = current->next;
+        map_flag++;
     }
+    if(map_flag == number_files){
+        isRunning = 0;
+    }
+    pthread_cancel(final->tid);
     pthread_join(final->tid, NULL);
+    unlink("mapred.tmp");
+    fclose(writefp);
+    fclose(readfp);
 
     printf(
         "Part: %s\n"
@@ -283,85 +274,77 @@ static void* map(void* v){
         abc->country = country_index[max_index];
         abc->country_counter = country_counter[max_index];
 
-        char* t = calloc(5, sizeof(char));
+        char* t = calloc(1024, sizeof(char));
+        char* x = calloc(128, sizeof(char));
 
-        writer(abc->filename_t);
-        writer(",");
-        sprintf(t, "%f", abc->duration);
-        writer(t); //change avg_duration to a string
-        writer(",");
-        sprintf(t, "%f", abc->avg_usercount);
-        writer(t); //change avg_usercount to a string
-        writer(",");
-        writer(abc->country);
-        writer(",");
-        sprintf(t, "%d", abc->country_counter);
-        writer(t);
-        writer("\n");
+        strcat(t, abc->filename_t);
+        strcat(t, ",");
+        sprintf(x, "%f", abc->duration);
+        strcat(t, x); //change avg_duration to a string
+        strcat(t, ",");
+        sprintf(x, "%f", abc->avg_usercount);
+        strcat(t, x); //change avg_usercount to a string
+        strcat(t, ",");
+        strcat(t, abc->country);
+        strcat(t, ",");
+        sprintf(x, "%d", abc->country_counter);
+        strcat(t, x);
+        writer(t); //CALL THE WRITER FUNCTION
 
         fclose(current_file);
+        free(x);
+        free(t);
         abc = abc->next;
 
     }
-    return abc;
+    return NULL; //TO MAKE SURE THAT REDUCE IS USING THE 
 }
 
 static void* reduce(void* v){
-    //pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    File_stats* current = (File_stats*) v;
-    Reduce_stats* final = calloc(1, sizeof(Reduce_stats));
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    File_stats* current = calloc(1, sizeof(File_stats));
+    Reduce_stats* final = (Reduce_stats*) v;
     char* max_file = calloc(1024, sizeof(char));
     char* min_file = calloc(1024, sizeof(char));
-    char total_string[64];
+    char total_string[128];
     char* rest;
-    while(current != NULL){
-        if(current->next == NULL)
-            break;
-        current = current->next;
-    }
+    double max = 0;
+    double min = 999999999;
 
-    //while(true){
-        if(fgets(total_string, 64, readfp)){
+    while(1){
+        sem_wait(&mutex);
+        readcnt++;
+        if(readcnt == 1)
+            sem_wait(&w);
+        sem_post(&mutex);
+
+        while(fgets(total_string, 128, readfp) != NULL){ //INCLUDE EOF){
             current->filename_t = strdup(strtok_r(total_string, ",", &rest));
-            current->duration = atoi(strtok_r(NULL, ",", &rest));
+            current->duration = atof(strtok_r(NULL, ",", &rest));
+            current->avg_usercount = atof(strtok_r(NULL, ",", &rest));
             current->country = strdup(strtok_r(NULL, ",", &rest));
             current->country_counter = atoi(strtok_r(NULL, ",", &rest));
-            current = (File_stats*) v; //go back to the very start of the list
+            printf("FILES: %s\n", current->filename_t);
+            printf("STOP\n");
 
             if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
                 //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
-                double max = 0;
-                double min = 0;
-                while(current != NULL){
-                    if(max < current->duration){
-                        max = current->duration;
+                if(max < current->duration){
+                    max = current->duration;
+                    max_file = current->filename_t;
+                }
+                else if(max == current->duration){
+                    if(strcmp(max_file, current->filename_t) > 0)
                         max_file = current->filename_t;
-                    }
-                    current = current->next;
                 }
-                min = max;
-                min_file = max_file;
-                current = (File_stats*) v; //reset back to the head
-                while(current != NULL){
-                    if(min > current->duration){
-                        min = current->duration;
+
+                if(min > current->duration){
+                    min = current->duration;
+                    min_file = current->filename_t;
+                }
+                else if(min == current->duration){
+                    if(strcmp(min_file, current->filename_t) > 0)
                         min_file = current->filename_t;
-                    }
-                    current = current->next;
-                }
-                current = (File_stats*) v;
-                while(current != NULL){
-                    if(max == current->duration){
-                        if(strcmp(max_file, current->filename_t) > 0){ //alpha
-                            max_file = current->filename_t;
-                        }
-                    }
-                    if(min == current->duration){
-                        if(strcmp(min_file, current->filename_t) > 0){
-                            min_file = current->filename_t;
-                        }
-                    }
-                    current = current->next;
                 }
 
                 final->max_durr = max; //A
@@ -370,38 +353,23 @@ static void* reduce(void* v){
                 final->min_file = min_file;
             }
             else if(strcmp(QUERY_STRINGS[current_query], "C") == 0 || strcmp(QUERY_STRINGS[current_query], "D") == 0){
-                double max = 0;
-                double min = 0;
-                while(current != NULL){
-                    if(max < current->avg_usercount){
-                        max = current->avg_usercount;
+
+                if(max < current->avg_usercount){
+                    max = current->avg_usercount;
+                    max_file = current->filename_t;
+                }
+                else if(max == current->avg_usercount){
+                    if(strcmp(max_file, current->filename_t) > 0)
                         max_file = current->filename_t;
-                    }
-                    current = current->next;
                 }
-                min = max;
-                min_file = max_file;
-                current = (File_stats*) v; //reset back to the head
-                while(current != NULL){
-                    if(min > current->avg_usercount){
-                        min = current->avg_usercount;
+
+                if(min > current->avg_usercount){
+                    min = current->avg_usercount;
+                    min_file = current->filename_t;
+                }
+                else if(min == current->avg_usercount){
+                    if(strcmp(min_file, current->filename_t) > 0)
                         min_file = current->filename_t;
-                    }
-                    current = current->next;
-                }
-                current = (File_stats*) v;
-                while(current != NULL){
-                    if(max == current->avg_usercount){
-                        if(strcmp(max_file, current->filename_t) > 0){ //alpha
-                            max_file = current->filename_t;
-                        }
-                    }
-                    if(min == current->avg_usercount){
-                        if(strcmp(min_file, current->filename_t) > 0){
-                            min_file = current->filename_t;
-                        }
-                    }
-                    current = current->next;
                 }
 
                 final->max_users = max; //A
@@ -417,27 +385,24 @@ static void* reduce(void* v){
                 int index = 0;
                 int flag = 0;
 
-                while(current != NULL){ //for every file (which has two arrays for countries)
-                    current_country = current->country;
-                    current_population = current->country_counter;
-                    index = 0;
-                    flag = 0;
+                current_country = current->country;
+                current_population = current->country_counter;
+                index = 0;
+                flag = 0;
 
-                    while(tcountry_counter[index] != 0){
-                        if(strcmp(current_country, tcountry_index[index]) == 0){
-                            tcountry_counter[index] = tcountry_counter[index] + current_population;
-                            flag = 1;
-                            break;
-                        }
-                        index++;
+                while(tcountry_counter[index] != 0){
+                    if(strcmp(current_country, tcountry_index[index]) == 0){
+                        tcountry_counter[index] = tcountry_counter[index] + current_population;
+                        flag = 1;
+                        break;
                     }
-                    if(flag == 0){
-                        tcountry_index[index] = strdup(current_country);
-                        tcountry_counter[index] = current_population;
-                    }
-
-                    current = current->next;
+                    index++;
                 }
+                if(flag == 0){
+                    tcountry_index[index] = strdup(current_country);
+                    tcountry_counter[index] = current_population;
+                }
+
 
                 //We're now going through array to find the max country
                 int max_users = 0;
@@ -452,10 +417,21 @@ static void* reduce(void* v){
                 }
                 final->country = tcountry_index[max_users];
                 final->country_max = tcountry_counter[max_users];
+                ;
             }
         }
-        //
-    //}
+        if(isRunning == 0){
+            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+            break;
+        }
+        sem_wait(&mutex);
+        readcnt--;
+        if(readcnt == 0)
+            sem_post(&w);
+        sem_post(&mutex);
+    }
+    printf("MAX: %f\n", final->max_durr);
+    printf("MAX FILE: %s\n", final->max_file);
     return final;
 }
 

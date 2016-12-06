@@ -298,7 +298,7 @@ static void* map(void* v){
         abc = abc->next;
 
     }
-    return NULL; //TO MAKE SURE THAT REDUCE IS USING THE 
+    return NULL; //TO MAKE SURE THAT REDUCE IS USING THE FILE
 }
 
 static void* reduce(void* v){

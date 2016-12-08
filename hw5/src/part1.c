@@ -16,7 +16,7 @@ int part1(){
     DIR* ptr = NULL;
     struct dirent *someptr;
 
-    if((ptr = opendir(DATA_DIR)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
+    if((ptr = opendir(DATA_DIR)) == NULL)
         return -1;
 
     File_stats* current = head;
@@ -25,11 +25,11 @@ int part1(){
             continue;
         else if (strcmp(someptr->d_name, ".") == 0)
             continue;
-        else if(someptr->d_type == DT_REG){
+        else if(someptr->d_type == DT_REG){ //I'M SPAWNING A THREAD FOR EVERY REGULAR FILE FOUND!
             if(current == head && current->duration == -2){
                 current->filename = calloc(256,sizeof(char));
                 strcpy(current->filename,someptr->d_name);
-                current->duration = 0; //this will change when we actually implment map
+                current->duration = 0; 
                 pthread_create(&current->tid, NULL, map, current);
                 name_now = name(name_now, naming_number);
                 pthread_setname_np(current->tid, name_now);

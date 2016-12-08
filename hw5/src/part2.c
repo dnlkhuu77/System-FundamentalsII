@@ -23,6 +23,12 @@ int part2(size_t nthreads) {
         return -1;
     int files_per = number_files / nthreads;
     int remainder = number_files % nthreads;
+
+    if(number_files <= (int) nthreads){
+        files_per = 1;
+        nthreads = number_files;
+        remainder = 0;
+    }
     
     int files_array[nthreads];
     for(int i = 0; i < nthreads; i++)
@@ -37,7 +43,7 @@ int part2(size_t nthreads) {
             break;
     }
 
-    if((ptr = opendir(DATA_DIR)) == NULL) //CHANGE ALL DATA_TEST TO DATA_DIR
+    if((ptr = opendir(DATA_DIR)) == NULL)
         return -1;
 
     File_stats* current = head;
@@ -85,7 +91,7 @@ int part2(size_t nthreads) {
 
     current = head;
 
-    for(int i = 0; i < nthreads; i++){
+    for(int i = 0; i < nthreads; i++){ //ONLY SPAWN THE NUMBER OF THREADS AS SHOWN IN NTHREADS
         char* name_now = calloc(128, sizeof(char));
         name_now = name(name_now, naming_number);
         pthread_create(&thread_heads[i]->tid, NULL, map, thread_heads[i]);

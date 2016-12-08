@@ -32,7 +32,7 @@ int flag = 0;
 static void writer(char* toWrite){
     sem_wait(&w);
 
-    fprintf(writefp, "%s\n", toWrite);
+    fprintf(writefp, "%s\n", toWrite); //WRITING TO THE FILE
     fflush(writefp);
 
     sem_post(&w);
@@ -47,6 +47,7 @@ static void* reader(Reduce_stats* v){
             sem_wait(&w);
         sem_post(&mutex);
 
+        //READING FROM THE FILE
         while(fgets(toRead, 128, readfp) != NULL){
             reduce2(toRead, v);
         }
@@ -62,7 +63,6 @@ static void* reader(Reduce_stats* v){
     }
     return v;
 }
-//THE READER FUNCTION IS IN THE REDUCE FUNCTION
 
 int part3(size_t nthreads) {
     File_stats* head = NULL;
@@ -85,6 +85,12 @@ int part3(size_t nthreads) {
         return -1;
     int files_per = number_files / nthreads;
     int remainder = number_files % nthreads;
+
+    if(number_files <= (int) nthreads){
+        files_per = 1;
+        nthreads = number_files;
+        remainder = 0;
+    }
     
     int files_array[nthreads];
     for(int i = 0; i < nthreads; i++)
@@ -145,6 +151,7 @@ int part3(size_t nthreads) {
         current = current->next;
     }
 
+    //CREATING THE FILE FOR READING AND WRITING
     writefp = fopen("mapred.tmp", "a");
     readfp = fopen("mapred.tmp", "r");
     current = head;

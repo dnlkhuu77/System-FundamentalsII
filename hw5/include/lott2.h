@@ -8,6 +8,7 @@
 typedef struct File_stats{
 	pthread_t tid;
 	int files;
+	int fd;
 	char* filename;
 	char* filename_t;
 	char* country;
@@ -29,7 +30,7 @@ typedef struct Reduce_stats{
 	double max_users;
 	double min_users;
 	char* country;
-	int country_max;
+	double country_max;
 } Reduce_stats;
 
 typedef struct Buffer{

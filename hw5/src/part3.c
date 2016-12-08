@@ -201,7 +201,7 @@ int part3(size_t nthreads) {
     else if(strcmp(QUERY_STRINGS[current_query], "D") == 0)
         printf("Result: %.5g, %s\n", final->min_users, final->min_file);
     else if((strcmp(QUERY_STRINGS[current_query], "E") == 0))
-        printf("Result: %d, %s\n", final->country_max, final->country);
+        printf("Result: %.5g, %s\n", final->country_max, final->country);
 
     return 0;
 }
@@ -477,12 +477,7 @@ static char* name(char* s, int thread_type, int thread_num){
         strcat(s, t);
     }
     else if(thread_type == 1){
-        strcat(s, "reduce ");
-
-        char* t = malloc(5);
-        sprintf(t, "%d", thread_num);
-
-        strcat(s, t);
+        strcat(s, "reduce");
     }
     return s;
 }

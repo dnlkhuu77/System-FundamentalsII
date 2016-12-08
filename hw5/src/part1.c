@@ -72,7 +72,7 @@ int part1(){
     else if(strcmp(QUERY_STRINGS[current_query], "D") == 0)
         printf("Result: %.5g, %s\n", final->min_users, final->min_file);
     else if((strcmp(QUERY_STRINGS[current_query], "E") == 0))
-        printf("Result: %d, %s\n", final->country_max, final->country);
+        printf("Result: %.5g, %s\n", final->country_max, final->country);
 
     return 0;
 }

@@ -5,29 +5,52 @@ static void* map(void*);
 static void* reduce(void*);
 static char* name(char*, int, int);
 static int nfiles(char*);
-void insertSlot(Buffer*, File_stats*);
-File_stats* removeSlot(Buffer*);
+void insert(Buffer*, File_stats*);
+File_stats* remove(Buffer*);
 
 static Buffer* globalBuffer;
 int map_flag, limit;
 static int isRunning = 1;
 
-void insertSlot(Buffer* sp, File_stats* item){
-    sem_wait(&sp->slots);
+void insert(Buffer* sp, File_stats* a){
+    sem_wait(&sp->slots); //THESE WILL ENFORCE THE LIMIT BUFFER SIZE OF 100
     sem_wait(&sp->mutex);
-
     //INSERTING THE STRUCT INTO THE BUFFER
-    sp->buf[(++sp->back)%(sp->n)] = item;
+    File_stats* item = calloc(1, sizeof(File_stats));
+    item->filename_t = calloc(1024, sizeof(char));
+    strcpy(item->filename_t, a->filename_t);
+    item->duration = a->duration;
+    item->avg_usercount = a->avg_usercount;
+    item->country = calloc(2, sizeof(char));
+    strcpy(item->country, a->country);
+    item->country_counter = a->country_counter;
+    if(sp->head == NULL){
+        sp->head = item;
+        sp->tail = item;
+        sp->head->next = NULL;
+        sp->tail->next = NULL;
+    }else{
+        File_stats* temp = sp->tail;
+        sp->tail = item;
+        sp->tail->next = NULL;
+        temp->next = sp->tail;
+    }
     sem_post(&sp->mutex);
     sem_post(&sp->items);
 }
 
-File_stats* removeSlot(Buffer* sp){
+File_stats* remove(Buffer* sp){
     File_stats* node = NULL;
     sem_wait(&sp->items);
     sem_wait(&sp->mutex);
 
-    node = sp->buf[(++sp->front)%(sp->n)];
+    if(sp->tail != NULL){
+        node = sp->head;
+        if(node != NULL)
+            sp->head = node->next;
+        else
+            sp->head = NULL;
+    }
     sem_post(&sp->mutex);
     sem_post(&sp->slots);
     return node;
@@ -38,7 +61,6 @@ int part4(size_t nthreads) {
     head = calloc(1,sizeof(File_stats));
     head->duration = -2;
     int naming_number = 0;
-    limit = nthreads;
 
     DIR* ptr;
     struct dirent *someptr;
@@ -47,6 +69,7 @@ int part4(size_t nthreads) {
         return -1;
 
     int number_files = nfiles(DATA_DIR);
+    limit = number_files;
     if(number_files == 0)
         return -1;
     int files_per = number_files / nthreads;
@@ -65,13 +88,12 @@ int part4(size_t nthreads) {
             break;
     }
 
-    globalBuffer = calloc(1, sizeof(globalBuffer));
-    globalBuffer->buf = calloc(100, sizeof(File_stats*));
+    globalBuffer = calloc(1, sizeof(Buffer));
+    globalBuffer->head = NULL;
+    globalBuffer->tail = NULL;
     globalBuffer->n = 100;
-    globalBuffer->front = 0;
-    globalBuffer->back = 0;
     sem_init(&globalBuffer->mutex, 0, 1);
-    sem_init(&globalBuffer->slots, 0, 100);
+    sem_init(&globalBuffer->slots, 0, 100); //SETTING THE LIMIT TO 100
     sem_init(&globalBuffer->items, 0, 0);
 
     if((ptr = opendir(DATA_DIR)) == NULL)
@@ -176,7 +198,6 @@ static void* map(void* v){
     int holy = abc->files;
 
     for(int a = 0; a < holy; a++){
-        printf("NUMBERS: %d|| FILE NAME: %s\n", a, abc->filename);
         char* filename_replace = calloc(1024, sizeof(char));
 
         strcat(filename_replace, abc->filename);
@@ -282,7 +303,7 @@ static void* map(void* v){
 
         abc->country = country_index[max_index];
         abc->country_counter = country_counter[max_index];
-        insertSlot(globalBuffer, abc);
+        insert(globalBuffer, abc);
 
         fclose(current_file);
         abc = abc->next;
@@ -302,10 +323,10 @@ static void* reduce(void* v){
     char** tcountry_index = calloc(1024, sizeof(char*));
     int* tcountry_counter = calloc(1024, sizeof(int));
     char* current_country = calloc(1024, sizeof(char));
+    int a = 1;
 
     while(1){
-        while((current = removeSlot(globalBuffer)) != NULL){
-            printf("FILE NAMES: %s\n", current->filename_t);
+        while((current = remove(globalBuffer)) != NULL){
             if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
                 //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
                 if(max < current->duration){
@@ -393,9 +414,12 @@ static void* reduce(void* v){
                 final->country = tcountry_index[max_users];
                 final->country_max = tcountry_counter[max_users];
             }
+            if(limit == a)
+                break;
         }
-        if(isRunning == 0){
+        if(limit == a){
             pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+            printf("LOL\n");
             break;
         }
     }

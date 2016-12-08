@@ -9,13 +9,13 @@ static int nfiles(char*);
 static void writer(char*);
 static void* reader(Reduce_stats*);
 
-int map_flag;
+int map_flag = 0;
+int isRunning = 1;
 int readcnt;
 int limit;
 sem_t mutex, w;
 FILE* readfp;
 FILE* writefp;
-int isRunning = 1;
 
 File_stats* current;
 Reduce_stats* fine;
@@ -178,6 +178,7 @@ int part3(size_t nthreads) {
         current = current->next;
         map_flag++;
     }
+
     if(map_flag == number_files){
         isRunning = 0;
     }

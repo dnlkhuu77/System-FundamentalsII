@@ -5,16 +5,16 @@ static void* map(void*);
 static void* reduce(void*);
 static char* name(char*, int, int);
 static int nfiles(char*);
-void insert(Buffer*, File_stats*);
-File_stats* remove(Buffer*);
+static void insertB(Buffer*, File_stats*);
+static File_stats* removeB(Buffer*);
 
 static Buffer* globalBuffer;
 int map_flag, limit;
 static int isRunning = 1;
 
-void insert(Buffer* sp, File_stats* a){
-    sem_wait(&sp->slots); //THESE WILL ENFORCE THE LIMIT BUFFER SIZE OF 100
-    sem_wait(&sp->mutex);
+void insertB(Buffer* glob, File_stats* a){
+    sem_wait(&glob->slots); //THESE WILL ENFORCE THE LIMIT BUFFER SIZE OF 100
+    sem_wait(&glob->mutex);
     //INSERTING THE STRUCT INTO THE BUFFER
     File_stats* item = calloc(1, sizeof(File_stats));
     item->filename_t = calloc(1024, sizeof(char));
@@ -24,35 +24,37 @@ void insert(Buffer* sp, File_stats* a){
     item->country = calloc(2, sizeof(char));
     strcpy(item->country, a->country);
     item->country_counter = a->country_counter;
-    if(sp->head == NULL){
-        sp->head = item;
-        sp->tail = item;
-        sp->head->next = NULL;
-        sp->tail->next = NULL;
+
+    if(glob->head == NULL){
+        glob->head = item;
+        glob->tail = item;
+        glob->head->next = NULL;
+        glob->tail->next = NULL;
     }else{
-        File_stats* temp = sp->tail;
-        sp->tail = item;
-        sp->tail->next = NULL;
-        temp->next = sp->tail;
+        File_stats* temp = glob->tail;
+        glob->tail = item;
+        glob->tail->next = NULL;
+        temp->next = glob->tail;
     }
-    sem_post(&sp->mutex);
-    sem_post(&sp->items);
+    sem_post(&glob->mutex);
+    sem_post(&glob->items);
 }
 
-File_stats* remove(Buffer* sp){
+File_stats* removeB(Buffer* glob){
     File_stats* node = NULL;
-    sem_wait(&sp->items);
-    sem_wait(&sp->mutex);
+    sem_wait(&glob->items);
+    sem_wait(&glob->mutex);
 
-    if(sp->tail != NULL){
-        node = sp->head;
+    if(glob->tail != NULL){
+        node = glob->head;
         if(node != NULL)
-            sp->head = node->next;
+            glob->head = node->next;
         else
-            sp->head = NULL;
+            glob->head = NULL;
     }
-    sem_post(&sp->mutex);
-    sem_post(&sp->slots);
+    
+    sem_post(&glob->mutex);
+    sem_post(&glob->slots);
     return node;
 }
 
@@ -74,6 +76,12 @@ int part4(size_t nthreads) {
         return -1;
     int files_per = number_files / nthreads;
     int remainder = number_files % nthreads;
+
+    if(number_files <= (int) nthreads){
+        files_per = 1;
+        nthreads = number_files;
+        remainder = 0;
+    }
     
     int files_array[nthreads];
     for(int i = 0; i < nthreads; i++)
@@ -303,7 +311,7 @@ static void* map(void* v){
 
         abc->country = country_index[max_index];
         abc->country_counter = country_counter[max_index];
-        insert(globalBuffer, abc);
+        insertB(globalBuffer, abc);
 
         fclose(current_file);
         abc = abc->next;
@@ -326,7 +334,7 @@ static void* reduce(void* v){
     int a = 1;
 
     while(1){
-        while((current = remove(globalBuffer)) != NULL){
+        while((current = removeB(globalBuffer)) != NULL){
             if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
                 //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
                 if(max < current->duration){
@@ -416,10 +424,10 @@ static void* reduce(void* v){
             }
             if(limit == a)
                 break;
+            a++;
         }
         if(limit == a){
             pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-            printf("LOL\n");
             break;
         }
     }

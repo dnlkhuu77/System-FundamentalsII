@@ -15,7 +15,7 @@ int part2(size_t nthreads) {
     DIR* ptr;
     struct dirent *someptr;
 
-    if(nthreads == 0)
+    if(nthreads <= 0)
         return -1;
 
     int number_files = nfiles(DATA_DIR);

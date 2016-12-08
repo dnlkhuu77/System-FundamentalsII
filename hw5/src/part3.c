@@ -1,6 +1,5 @@
 #include "lott.h"
 #include "lott2.h"
-#include <semaphore.h>
 
 static void* map(void*);
 static void* reduce(void*);
@@ -78,7 +77,7 @@ int part3(size_t nthreads) {
     DIR* ptr;
     struct dirent *someptr;
 
-    if(nthreads == 0)
+    if(nthreads <= 0)
         return -1;
 
     int number_files = nfiles(DATA_DIR);

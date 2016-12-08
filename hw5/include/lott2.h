@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <time.h>
+#include <semaphore.h>
 
 typedef struct File_stats{
 	pthread_t tid;
@@ -30,3 +31,15 @@ typedef struct Reduce_stats{
 	char* country;
 	int country_max;
 } Reduce_stats;
+
+typedef struct Buffer{
+	File_stats **buf; //Buffer array
+	int n; //maximum number of slots
+	int front;
+	int back;
+	File_stats* head; //first item
+	File_stats* tail; //last item
+	sem_t mutex; //protects access to buffer
+	sem_t slots; //counts available slots
+	sem_t items; //counts available items
+} Buffer;

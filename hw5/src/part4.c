@@ -14,7 +14,7 @@ static int isRunning = 1;
 
 void insertB(Buffer* glob, File_stats* a){
     sem_wait(&glob->slots); //THESE WILL ENFORCE THE LIMIT BUFFER SIZE OF 100
-    sem_wait(&glob->mutex);
+    sem_wait(&glob->mutex); //THIS WILL ENFORCE WRITER PREFERENCE
     //INSERTING THE STRUCT INTO THE BUFFER
     File_stats* item = calloc(1, sizeof(File_stats));
     item->filename_t = calloc(1024, sizeof(char));
@@ -133,19 +133,19 @@ int part4(size_t nthreads) {
 
     current = head;
     int index = 0;
-    int files_remain = 0;
+    int left = 0;
     int heat_count = 0;
     File_stats* thread_heads[nthreads];
     while(current != NULL){
-        if(files_remain == 0 && index <= nthreads){
-            files_remain = files_array[index];
-            current->files = files_remain;
+        if(left == 0 && index <= nthreads){
+            left = files_array[index];
+            current->files = left;
             thread_heads[heat_count] = current;
-            files_remain--;
+            left--;
             index++;
             heat_count++;
-        }else if(files_remain > 0)
-            files_remain--;
+        }else if(left > 0)
+            left--;
 
         current = current->next;
     }
@@ -311,6 +311,7 @@ static void* map(void* v){
 
         abc->country = country_index[max_index];
         abc->country_counter = country_counter[max_index];
+        //INSERTING THE STRUCT INTO BUFFER LINKED LIST
         insertB(globalBuffer, abc);
 
         fclose(current_file);
@@ -334,6 +335,7 @@ static void* reduce(void* v){
     int a = 1;
 
     while(1){
+        //KEEP REMOVING THE STRUCT FROM THE BUFFER LINKED LIST
         while((current = removeB(globalBuffer)) != NULL){
             if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
                 //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED

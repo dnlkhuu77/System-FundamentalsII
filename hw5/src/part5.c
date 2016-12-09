@@ -80,27 +80,31 @@ int part5(size_t nthreads) {
 
     current = head;
     int index = 0;
-    int files_remain = 0;
+    int left = 0;
     int heat_count = 0;
     File_stats* thread_heads[nthreads];
     int dead[nthreads][2];
     int deady = 0;
     rec = calloc(nthreads, sizeof(int));
     while(current != NULL){
-        if(files_remain == 0 && index <= nthreads){
-            files_remain = files_array[index];
-            current->files = files_remain;
+        if(left == 0 && index <= nthreads){
+            left = files_array[index];
+            current->files = left;
             thread_heads[heat_count] = current;
 
+            //WE WANT A SOCKET BETWEEN THE MAP AND REDUCE THREADS
+            //THE FILE DESCRIPTOR FOR THE MAP IS IN THE STRUCT
+            //THE OTHER DESCRIPTOR (RECEIVER) IS IN A GLOBAL RECIEVE ARRAY OF NTHREADS SIZE
             socketpair(AF_UNIX, SOCK_STREAM, 0, dead[deady]);
             deady++;
             current->fd = dead[deady - 1][0];
             rec[deady - 1] = dead[deady - 1][1];
-            files_remain--;
+
+            left--;
             index++;
             heat_count++;
-        }else if(files_remain > 0)
-            files_remain--;
+        }else if(left > 0)
+            left--;
 
         current = current->next;
     }
@@ -283,6 +287,7 @@ static void* map(void* v){
         strcat(t, ",");
         sprintf(x, "%d", abc->country_counter);
         strcat(t, x);
+        //WRITE THE STRING INTO THE SOCKET
         write(heady, t, 1024);
 
         fclose(current_file);
@@ -310,6 +315,7 @@ static void* reduce(void* v){
     char* rest;
 
     while(1){
+        //SETTING UP THE POLL TO RECIEVE FROM THE STRING FROM THE SOCKET
         struct pollfd polar[nthreads2];
         for(int i = 0; i < nthreads2; i++){
             polar[i].fd = rec[i];

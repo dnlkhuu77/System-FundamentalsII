@@ -40,7 +40,7 @@ static void writer(char* toWrite){
 
 static void* reader(Reduce_stats* v){
     char toRead[128];
-    while(1){
+    while(1){ //THIS WILL SET READER PREFERENCE
         sem_wait(&mutex);
         readcnt++;
         if(readcnt == 1)
@@ -134,19 +134,19 @@ int part3(size_t nthreads) {
 
     current = head;
     int index = 0;
-    int files_remain = 0;
+    int left = 0;
     int heat_count = 0;
     File_stats* thread_heads[nthreads];
     while(current != NULL){
-        if(files_remain == 0 && index <= nthreads){
-            files_remain = files_array[index];
-            current->files = files_remain;
+        if(left == 0 && index <= nthreads){
+            left = files_array[index];
+            current->files = left;
             thread_heads[heat_count] = current;
-            files_remain--;
+            left--;
             index++;
             heat_count++;
-        }else if(files_remain > 0)
-            files_remain--;
+        }else if(left > 0)
+            left--;
 
         current = current->next;
     }
@@ -179,7 +179,7 @@ int part3(size_t nthreads) {
         map_flag++;
     }
 
-    if(map_flag == number_files){
+    if(map_flag == number_files){ //STOP THE INFINITE LOOP OF THE READER WHEN ALL MAP THREADS JOIN
         isRunning = 0;
     }
     pthread_cancel(final->tid);
@@ -336,7 +336,7 @@ static void* map(void* v){
         strcat(t, ",");
         sprintf(x, "%d", abc->country_counter);
         strcat(t, x);
-        writer(t); //CALL THE WRITER FUNCTION
+        writer(t); //CALL THE WRITER WRAPPER FUNCTION
 
         fclose(current_file);
         free(x);
@@ -351,7 +351,7 @@ static void* reduce(void* v){
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
     Reduce_stats* final = (Reduce_stats*) v;
 
-    reader(final);
+    reader(final); //CALLING THE READER WRAPPER FUNCTION
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     return final;
 }
@@ -371,6 +371,7 @@ static void* reduce2(char* total_string, Reduce_stats* v){
         flag = 1;
     }
 
+        //TOTAL_STRING HAS THE LINE READ FROM THE FILE IN THE READER WRAPPER FUNCTION
         current->filename_t = strdup(strtok_r(total_string, ",", &rest));
         current->duration = atof(strtok_r(NULL, ",", &rest));
         current->avg_usercount = atof(strtok_r(NULL, ",", &rest));

@@ -8,7 +8,7 @@ static char* name(char*, int);
 int part1(){
     char* name_now;
     name_now = calloc(1024, sizeof(char));
-    File_stats* head = NULL;
+    File_stats* head = NULL; //MALLOC THE HEAD OF A LINKED LIST
     head = calloc(1,sizeof(File_stats));
     head->duration = -2;
     int naming_number = 0;
@@ -26,15 +26,15 @@ int part1(){
         else if (strcmp(someptr->d_name, ".") == 0)
             continue;
         else if(someptr->d_type == DT_REG){ //I'M SPAWNING A THREAD FOR EVERY REGULAR FILE FOUND!
-            if(current == head && current->duration == -2){
+            if(current == head && current->duration == -2){ //FOR THE HEAD OF THE LINKED LIST
                 current->filename = calloc(256,sizeof(char));
                 strcpy(current->filename,someptr->d_name);
                 current->duration = 0; 
                 pthread_create(&current->tid, NULL, map, current);
                 name_now = name(name_now, naming_number);
                 pthread_setname_np(current->tid, name_now);
-            }else{
-                current->next = calloc(1, sizeof(File_stats));
+            }else{ //FOR EVERY NODE OF THE LINKED LIST
+                current->next = calloc(1, sizeof(File_stats)); //MALLOC THE NEXT NODE OF THE LINKED LIST
                 current = current->next;
                 current->filename = calloc(256,sizeof(char));   
                 strcpy(current->filename,someptr->d_name);
@@ -87,6 +87,9 @@ static void* map(void* v){ //the static makes the function accessible to part1
     strcat(filename_replace, abc->filename);
     abc->filename_t = filename_replace;
 
+    //I WILL USE TWO ARRAYS FOR COUNTRIES
+    //COUNTRY_INDEX FOR COUNTRY CODE
+    //COUNTER_COUNTER FOR COUNTRY_INDEX
     char* country_index[10];
     int country_counter[10];
     for(int i = 0; i < 10; i++){
@@ -101,12 +104,10 @@ static void* map(void* v){ //the static makes the function accessible to part1
     char* opening = calloc(1024, sizeof(char));
     strcat(opening, DATA_DIR);
     strcat(opening, "/");
-
     strcat(opening, abc->filename);
-    //printf("Printing file name: %s\n", opening);
 
     FILE* current_file;
-    current_file = fopen(opening, "r");
+    current_file = fopen(opening, "r"); //Open one file of the directory
 
     //parse the text into its individual stats
     int user_counter = 0;
@@ -121,6 +122,7 @@ static void* map(void* v){ //the static makes the function accessible to part1
     char* rest;
 
     while(fscanf(current_file, "%s", total_string) != EOF){
+        //PARSE THE STRING
         int c_duration = 0;
         unix_string = strtok_r(total_string, ",", &rest);
         strtok_r(NULL, ",", &rest);
@@ -135,7 +137,6 @@ static void* map(void* v){ //the static makes the function accessible to part1
         localtime_r(&now, &ts);
 
         strftime(year_string, sizeof(year_string), "%Y", &ts);
-        //printf("Year %s\n", year_string);
         year = atoi(year_string);
         year = year - 1901;
         year_check[year]++; //for nonzero years
@@ -178,7 +179,7 @@ static void* map(void* v){ //the static makes the function accessible to part1
         }
     }
 
-    for(int i = 0; i < 10; i++){
+    for(int i = 0; i < 10; i++){ //ALPHABETICAL ORDER
         if(country_counter[i] == max){
             if(strcmp(country_index[max_index], country_index[i]) > 0)
                 max_index = i;
@@ -199,7 +200,6 @@ static void* reduce(void* v){
     char* min_file = calloc(1024, sizeof(char));
 
     if(strcmp(QUERY_STRINGS[current_query], "A") == 0 || strcmp(QUERY_STRINGS[current_query], "B") == 0){
-        //FILENAME OF THE MAX AND MIN FILES NEEED TO BE DETERMINED
         double max = 0;
         double min = 0;
         while(current != NULL){
@@ -220,9 +220,9 @@ static void* reduce(void* v){
             current = current->next;
         }
         current = (File_stats*) v;
-        while(current != NULL){
+        while(current != NULL){ //FOR ALPHABETICAL ORDER
             if(max == current->duration){
-                if(strcmp(max_file, current->filename_t) > 0){ //alpha
+                if(strcmp(max_file, current->filename_t) > 0){
                     max_file = current->filename_t;
                 }
             }
@@ -280,6 +280,7 @@ static void* reduce(void* v){
         final->min_file = min_file;
     }
     else if(strcmp(QUERY_STRINGS[current_query], "E") == 0){
+        //I USE TWO BIG BIG ARRAYS TO COMBINE THE TWO ARRAYS OF EVERY NODE IN THE LINKED LIST
         char** tcountry_index = calloc(1024, sizeof(char*));
         int* tcountry_counter = calloc(1024, sizeof(int));
         char* current_country = calloc(1024, sizeof(char));

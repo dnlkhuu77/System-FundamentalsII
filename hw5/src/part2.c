@@ -59,7 +59,7 @@ int part2(size_t nthreads) {
             current->files = 0;
 
             long saved = telldir(ptr);
-            if((someptr = readdir(ptr)) != NULL){
+            if((someptr = readdir(ptr)) != NULL){ //we don't malloc for a struct if the next file is "." or ".."
                 if(strcmp(someptr->d_name, ".") != 0 || strcmp(someptr->d_name, "..") != 0){
                     current->next = calloc(1, sizeof(File_stats));
                     current = current->next;
@@ -72,19 +72,19 @@ int part2(size_t nthreads) {
 
     current = head;
     int index = 0;
-    int files_remain = 0;
+    int left = 0;
     int heat_count = 0;
     File_stats* thread_heads[nthreads];
-    while(current != NULL){
-        if(files_remain == 0 && index <= nthreads){
-            files_remain = files_array[index];
-            current->files = files_remain;
+    while(current != NULL){ //we will create an array of struct pointers that will the head of every nthread's file
+        if(left == 0 && index <= nthreads){
+            left = files_array[index];
+            current->files = left;
             thread_heads[heat_count] = current;
-            files_remain--;
+            left--;
             index++;
             heat_count++;
-        }else if(files_remain > 0)
-            files_remain--;
+        }else if(left > 0)
+            left--;
 
         current = current->next;
     }
@@ -96,9 +96,7 @@ int part2(size_t nthreads) {
         name_now = name(name_now, naming_number);
         pthread_create(&thread_heads[i]->tid, NULL, map, thread_heads[i]);
         pthread_setname_np(thread_heads[i]->tid, name_now);
-
         naming_number++;
-
     }
     //printf("NUMBER OF THREADS: %d\n", thread_counter);
     while(current != NULL){
@@ -143,6 +141,9 @@ static void* map(void* v){
         strcat(filename_replace, abc->filename);
         abc->filename_t = filename_replace;
 
+        //I WILL USE TWO ARRAYS FOR COUNTRIES
+        //COUNTRY_INDEX FOR COUNTRY CODE
+        //COUNTER_COUNTER FOR COUNTRY_INDEX
         char* country_index[10];
         int country_counter[10];
         for(int i = 0; i < 10; i++){
@@ -159,7 +160,6 @@ static void* map(void* v){
         strcat(opening, "/");
 
         strcat(opening, abc->filename);
-        //printf("Printing file name: %s\n", opening);
 
         FILE* current_file;
         current_file = fopen(opening, "r");

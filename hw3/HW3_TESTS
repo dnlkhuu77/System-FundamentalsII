@@ -1,0 +1,185 @@
+# Homework 3 Tests
+
+### Malloc_a_Char
+- Check free list head values
+- Check allocated block header and footer tags
+
+### Malloc_an_Integer
+- Check free list head values
+- Check allocated block header and footer tags
+
+### Malloc_773_Bytes
+- Check free list head values
+- Check allocated block header and footer tags
+
+### Malloc_a_Short
+- Check free list head values
+- Check allocated block header and footer tags
+
+### Malloc_a_Double
+- Check free list head values
+- Check allocated block header and footer tags
+
+### Malloc_a_LongDouble
+- Check free list head values
+- Check allocated block header and footer tags
+
+### Malloc_a_7737
+- Check free list head values
+- Check allocated block header and footer tags
+
+### Free_block_check_header_footer_values
+- Malloc a block and then free it
+- Check free block's alloc bits
+
+### External_fragmentation_ask_sf_sbrk_for_more_space
+- Malloc'd for more than what was free/available in free list
+- So it grabs another page and takes what it needs
+- Checks the free list to make sure that rest of new page is in freelist_head
+
+### Check_next_prev_pointers_of_free_block_at_head_of_list_BaseCase
+- Malloc once
+- Check next and prev pointers in freelist_head
+
+### Check_next_prev_pointers_of_free_block_at_head_of_list_3FreeBlocks
+- Multiple allocations, then few frees
+- Multiple free blocks in free list
+- Check for pointers to the blocks
+- Check values in the header and footer tags of the free blocks
+
+### ManagingMemory_consecutive_list
+- Multiple allocations then multiple frees
+- Check for proper ordering of free blocks in free list
+
+### Realloc_size_zero_expect_NULL
+- Realloc call with size 0
+- Expect NULL and for the errno to be set
+
+### Realloc_smaller_size_ptr_should_not_move
+- Malloc a block
+- Realloc that block to a smaller size
+- Check to see that the block did not move
+
+### Realloc_larger_fits_contiguous
+- Malloc a block
+- Realloc larger size
+- Expect block to be in same place and just extended forward
+
+### Realloc_larger_must_move
+- Malloc a few blocks
+- Realloc a block to larger size
+- Realloc'd block should have moved to be able to accommodate the request
+
+### Realloc_larger_fits_contiguous_absorb_splinter
+- Malloc a few blocks
+- Free a block
+- Realloc block such that it extends forward but has to absorb more than it needs otherwise splinter would be left
+
+### Coalesce_no_coalescing
+- Malloc a few blocks
+- Free a couple of blocks that are not next to other free blocks in memory
+- Then check free list for right number of blocks
+
+### Coalesce_free_block_before
+- Malloc a few blocks
+- Free block and then free block right after that one
+- Check free list to make sure its been properly coalesced
+
+### Coalesce_free_block_after
+- Malloc a few blocks
+- Free a block and then free another block before that one
+- Check free list to make sure its been properly coalesced
+
+### Coalesce_free_before_and_after
+- Malloc a few blocks
+- Free two blocks, that are not next to each other, just one block apart from one another
+- Free the block in the middle of two free blocks
+- Check the free list to see that it was properly coalesced
+
+### Malloc_one_page
+- Malloc an entire page
+- Check allocated block for proper header and footer tags
+- Check for empty free list
+
+### Malloc_two_pages
+- Malloc two pages
+- Check allocated block for proper header and footer tags
+- Check for empty free list
+
+### Malloc_three_pages
+- Malloc three pages
+- Check allocated block for proper header and footer tags
+- Check for empty free list
+
+### Malloc_four_pages
+- Malloc four pages
+- Check allocated block for proper header and footer tags
+- Check for empty free list
+
+### Splinter
+- Malloc a few times
+- Free a small block
+- Then Malloc call which will attempt to split that recently freed block but if split would leave splinter so it should give the entire block
+
+### Splitting
+- Malloc a few times
+- Then free a large block
+- Malloc for a small block, so that it splits on the recently freed block
+- Check the free list head to make sure block was properly  split and put back into free list
+
+### Info_count_allocations
+- Malloc and free a few times
+- Then call sf_info and check allocations count
+
+### Info_count_coalesces
+- Malloc and free a few times
+- Then call sf_info and check the coalesces count
+
+### Info_count_internal
+- Malloc and free a few times
+- Then call sf_info and check the internal count
+
+### Info_count_external
+- Malloc and free a few times
+- Then call sf_info and check the external count
+
+### Info_Malloc_And_Free
+- Malloc and free a few times
+- Check block size and padding size of an allocated block
+- Check freelist_head block size
+- Call sf_info and check allocations, frees, internal, and external counts
+
+### Realloc_Payload_Integrity_And_Moved
+- Malloc a couple of times
+- Copy a string into an allocated block
+- Realloc the allocated block such that it needs to be moved to do the re-allocation
+- Then check for the string in the payload to make sure the payload was copied over
+
+### Realloc_Both_Extend_In_Place_And_Move
+- Malloc a few times
+- Realloc twice such that the block needs to be moved to a different address on the heap to accommodate the request
+- Realloc on a block such that it does not have to be moved to accommodate the request
+
+### Free_Coalesce_Forward_2_Times
+- Malloc a few times
+- Free 3 blocks that are located one after another in memory
+- Check the freelist_head to see if the blocks freed were properly coalesced and check freelist_head footer tag as well
+- Check to see that the rest of the page that is free is in the free list
+
+### Malloc_Whole_First_Page_Multiple_Times
+- Malloc whole page in one malloc call
+- Check for empty free list
+- Then free the page and malloc the entire page again with multiple malloc calls
+- Check for empty list again
+- Free all allocated blocks and check freelist_head block size and make sure its block size is one page (4096 bytes)
+- Check that freelist_head is the only free block in the free list
+
+### Malloc_four_pages_across_multiple_mallocs_then_frees_all
+- Malloc all four pages with numerous malloc calls
+- Check for empty free list
+- Free all the allocated blocks
+- Check freelist_head block size and make sure its four pages
+
+### Stress Tests
+- Mix of a bunch of malloc and free calls
+- Check freelist_head at the end
